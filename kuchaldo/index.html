@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>SQUISH BRAWL - Platform Brawler</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700;800;900&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div id="game-container">
+    <canvas id="game-canvas"></canvas>
+
+    <!-- Top Match HUD -->
+    <header id="hud" class="hud-layer">
+      <div class="hud-left">
+        <div class="match-timer-box">
+          <span class="timer-icon">⏱</span>
+          <span id="match-timer">02:00</span>
+        </div>
+        <div class="alive-count-box">
+          <span class="alive-icon">⚔️</span>
+          <span id="alive-count">4/4 ALIVE</span>
+        </div>
+      </div>
+
+      <div class="hud-center">
+        <!-- Fighter Status Cards -->
+        <div class="fighters-hud" id="fighters-hud">
+          <!-- Dynamically populated -->
+        </div>
+      </div>
+
+      <div class="hud-right">
+        <button id="btn-sound" class="hud-btn" title="Toggle Sound (M)" aria-label="Toggle Sound">🔊</button>
+        <button id="btn-music" class="hud-btn" title="Toggle Music (B)" aria-label="Toggle Music">🎵</button>
+        <button id="btn-fullscreen" class="hud-btn" title="Fullscreen" aria-label="Toggle Fullscreen">⛶</button>
+      </div>
+    </header>
+
+    <!-- Center Announcer & Overlay Banner -->
+    <div id="announcer-overlay" class="announcer-overlay hidden">
+      <div id="announcer-text" class="announcer-text">3</div>
+    </div>
+
+    <!-- Match Over Modal -->
+    <div id="game-over-modal" class="modal-layer hidden">
+      <div class="modal-card">
+        <div class="trophy-badge" id="modal-trophy">🏆</div>
+        <h1 id="modal-title" class="modal-title">VICTORY!</h1>
+        <p id="modal-subtitle" class="modal-subtitle">You out-squished all rivals!</p>
+
+        <div class="stats-grid" id="modal-stats">
+          <!-- Populated by JS -->
+        </div>
+
+        <div class="modal-actions">
+          <button id="btn-restart" class="action-btn restart-btn">
+            <span>PLAY AGAIN</span>
+            <span class="key-hint">(ENTER or SPACE)</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Start / Title Screen Overlay -->
+    <div id="title-screen" class="modal-layer">
+      <div class="modal-card title-card">
+        <div class="game-logo">
+          <span class="logo-red">SQUISH</span>
+          <span class="logo-accent">BRAWL</span>
+        </div>
+        <p class="tagline">Knock all 3 AI bots off the arena! If you fall, you lose!</p>
+
+        <div class="character-preview-row">
+          <div class="preview-blob player-blob">
+            <div class="blob-crown">👑</div>
+            <div class="blob-tag">🔴 YOU (Red)</div>
+          </div>
+          <div class="vs-badge">VS</div>
+          <div class="preview-blob bot-blob-1">
+            <div class="blob-horns">⚡</div>
+            <div class="blob-tag">🟢 BLAZE (Green)</div>
+          </div>
+          <div class="preview-blob bot-blob-2">
+            <div class="blob-horns">🛡️</div>
+            <div class="blob-tag">🔵 AEGIS (Blue)</div>
+          </div>
+          <div class="preview-blob bot-blob-3">
+            <div class="blob-horns">🌀</div>
+            <div class="blob-tag">🟡 WOBBLE (Yellow)</div>
+          </div>
+        </div>
+
+        <div class="instructions-panel">
+          <div class="control-row">
+            <span class="control-label">Move:</span>
+            <span class="control-keys"><kbd>A</kbd> <kbd>D</kbd> or <kbd>◀</kbd> <kbd>▶</kbd></span>
+          </div>
+          <div class="control-row">
+            <span class="control-label">Jump / Double-Jump:</span>
+            <span class="control-keys"><kbd>W</kbd> or <kbd>SPACE</kbd></span>
+          </div>
+          <div class="control-row">
+            <span class="control-label">Punch / Attack:</span>
+            <span class="control-keys"><kbd>J</kbd> or <kbd>X</kbd> or <kbd>Left Click</kbd></span>
+          </div>
+          <div class="control-row">
+            <span class="control-label">Burst Dash:</span>
+            <span class="control-keys"><kbd>K</kbd> or <kbd>SHIFT</kbd></span>
+          </div>
+          <div class="control-row">
+            <span class="control-label">Drop Platform:</span>
+            <span class="control-keys"><kbd>S</kbd> or <kbd>▼</kbd></span>
+          </div>
+          <div class="pro-tip">
+            💡 <strong>BRAWL TIP:</strong> Jump directly on opponent heads to bounce-stomp them! High damage = HUGE knockback!
+          </div>
+        </div>
+
+        <button id="btn-start" class="action-btn start-btn">
+          <span>START BRAWL</span>
+          <span class="key-hint">(ENTER or CLICK)</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Mobile Touch Controls Layer (HIDDEN on Desktop, ONLY shown on touch devices) -->
+    <div id="mobile-controls" class="mobile-controls-layer hidden">
+      <!-- Left D-Pad -->
+      <div class="mobile-dpad">
+        <button id="touch-left" class="touch-btn dpad-btn" data-key="left" aria-label="Left">
+          <svg viewBox="0 0 24 24"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+        </button>
+        <button id="touch-down" class="touch-btn dpad-btn dpad-down" data-key="down" aria-label="Drop Down">
+          <svg viewBox="0 0 24 24"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg>
+        </button>
+        <button id="touch-right" class="touch-btn dpad-btn" data-key="right" aria-label="Right">
+          <svg viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+        </button>
+      </div>
+
+      <!-- Right Action Cluster -->
+      <div class="mobile-actions">
+        <button id="touch-dash" class="touch-btn action-circle dash-circle" data-key="dash" aria-label="Dash">
+          <span class="touch-icon">💨</span>
+          <span class="touch-text">DASH</span>
+        </button>
+        <button id="touch-attack" class="touch-btn action-circle attack-circle" data-key="attack" aria-label="Attack">
+          <span class="touch-icon">🥊</span>
+          <span class="touch-text">PUNCH</span>
+        </button>
+        <button id="touch-jump" class="touch-btn action-circle jump-circle" data-key="jump" aria-label="Jump">
+          <span class="touch-icon">⬆️</span>
+          <span class="touch-text">JUMP</span>
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Scripts -->
+  <script src="audio.js"></script>
+  <script src="particles.js"></script>
+  <script src="powerups.js"></script>
+  <script src="arena.js"></script>
+  <script src="characters.js"></script>
+  <script src="ai.js"></script>
+  <script src="camera.js"></script>
+  <script src="input.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>

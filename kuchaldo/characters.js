@@ -1,0 +1,884 @@
+/* ============================================================
+   SQUISH BRAWL - CHARACTERS SYSTEM
+   🔴 Player = RED (Exclusively reserved for human player)
+   🟢 Bot 1 = GREEN (Blaze - Aggressive)
+   🔵 Bot 2 = BLUE (Aegis - Defensive)
+   🟡 Bot 3 = YELLOW (Wobble - Chaotic)
+   ============================================================ */
+
+const CHARACTER_THEMES = {
+  player: {
+    name: 'Player',
+    colorName: 'RED',
+    gradTop: '#ff5e78',
+    gradMid: '#ff2240',
+    gradBottom: '#a60822',
+    outline: '#ffcc00', // Distinct gold outline for player
+    outlineWidth: 3.5,
+    fistColor: '#ff2240',
+    fistOutline: '#660010',
+    glow: 'rgba(255, 42, 75, 0.45)',
+    cardBorder: '#ff3344'
+  },
+  bot_blaze: {
+    name: 'Blaze',
+    colorName: 'GREEN',
+    gradTop: '#34d399',
+    gradMid: '#10b981',
+    gradBottom: '#047857',
+    outline: '#064e3b',
+    outlineWidth: 2.5,
+    fistColor: '#10b981',
+    fistOutline: '#064e3b',
+    glow: 'rgba(16, 185, 129, 0.45)',
+    cardBorder: '#10b981'
+  },
+  bot_aegis: {
+    name: 'Aegis',
+    colorName: 'BLUE',
+    gradTop: '#60a5fa',
+    gradMid: '#2563eb',
+    gradBottom: '#1e40af',
+    outline: '#1e3a8a',
+    outlineWidth: 2.5,
+    fistColor: '#2563eb',
+    fistOutline: '#1e3a8a',
+    glow: 'rgba(37, 99, 235, 0.45)',
+    cardBorder: '#3b82f6'
+  },
+  bot_wobble: {
+    name: 'Wobble',
+    colorName: 'YELLOW',
+    gradTop: '#fde047',
+    gradMid: '#eab308',
+    gradBottom: '#a16207',
+    outline: '#713f12',
+    outlineWidth: 2.5,
+    fistColor: '#eab308',
+    fistOutline: '#713f12',
+    glow: 'rgba(234, 179, 8, 0.45)',
+    cardBorder: '#facc15'
+  }
+};
+
+class Fighter {
+  constructor(config) {
+    this.id = config.id;
+    this.name = config.name;
+    this.isBot = config.isBot;
+    this.accessory = config.accessory; // 'crown', 'mohawk', 'horns', 'propeller'
+    this.personality = config.personality || 'player';
+    this.themeKey = config.themeKey || (this.isBot ? 'bot_blaze' : 'player');
+    this.theme = CHARACTER_THEMES[this.themeKey] || CHARACTER_THEMES.player;
+
+    // Position & Physics
+    this.x = config.x || 900;
+    this.y = config.y || 600;
+    this.vx = 0;
+    this.vy = 0;
+    this.radius = 25; // 1.3x larger than 19px standard (~50px diameter)
+    this.facing = config.facing || 1; // 1 = right, -1 = left
+
+    // Movement speeds
+    this.maxSpeed = 440;
+    this.accel = 2600;
+    this.friction = 2800;
+    this.airControl = 0.82;
+    this.gravity = 1450;
+    this.jumpStrength = -640;
+    this.doubleJumpStrength = -580;
+
+    // Platform & Air state
+    this.onGround = false;
+    this.currentPlatform = null;
+    this.jumpsRemaining = 2; // 1 ground jump + 1 air jump
+    this.isDroppingDown = false;
+    this.dropDownTimer = 0;
+
+    // Squash & Stretch Spring Physics
+    this.scaleX = 1.0;
+    this.scaleY = 1.0;
+    this.scaleVx = 0;
+    this.scaleVy = 0;
+    this.springK = 180;
+    this.springDamping = 12;
+
+    // Combat & Damage
+    this.damagePercentage = 0;
+    this.isAlive = true;
+    this.hitStunTimer = 0;
+    this.invulnerableTimer = 0;
+    this.attackCooldown = 0;
+    this.isAttacking = false;
+    this.attackTimer = 0;
+    this.attackDuration = 0.22;
+    this.attackHitFighters = new Set();
+
+    // Dash
+    this.isDashing = false;
+    this.dashTimer = 0;
+    this.dashDuration = 0.20;
+    this.dashCooldown = 0;
+    this.dashSpeed = 780;
+
+    // Power-up Buff & Shield
+    this.activeBuff = null;
+    this.hasShield = false;
+
+    // Visual eye blinking & animation
+    this.eyeBlinkTimer = 1 + Math.random() * 3;
+    this.isBlinking = false;
+    this.wobbleAngle = 0;
+    this.walkCycle = 0;
+
+    // Match statistics
+    this.kills = 0;
+    this.damageDealt = 0;
+    this.survivalTime = 0;
+  }
+
+  reset(x, y) {
+    this.x = x;
+    this.y = y;
+    this.vx = 0;
+    this.vy = 0;
+    this.damagePercentage = 0;
+    this.isAlive = true;
+    this.onGround = false;
+    this.currentPlatform = null;
+    this.jumpsRemaining = 2;
+    this.scaleX = 1;
+    this.scaleY = 1;
+    this.hitStunTimer = 0;
+    this.invulnerableTimer = 1.0; // safe spawn shield
+    this.attackCooldown = 0;
+    this.isAttacking = false;
+    this.dashCooldown = 0;
+    this.isDashing = false;
+    this.activeBuff = null;
+    this.hasShield = false;
+    this.kills = 0;
+    this.damageDealt = 0;
+    this.survivalTime = 0;
+  }
+
+  // --- ACTIONS ---
+
+  move(dir, dt) {
+    if (this.hitStunTimer > 0 || !this.isAlive) return;
+
+    if (dir !== 0) {
+      this.facing = dir > 0 ? 1 : -1;
+      const speedMult = this.activeBuff && this.activeBuff.id === 'SPEED_BOOTS' ? 1.4 : 1.0;
+      const targetSpeed = dir * this.maxSpeed * speedMult;
+      const accelRate = (this.onGround ? this.accel : this.accel * this.airControl) * dt;
+
+      if (Math.sign(this.vx) !== Math.sign(dir) && Math.abs(this.vx) > 50) {
+        // Quick turn friction
+        this.vx += dir * this.friction * dt;
+      } else {
+        this.vx += (targetSpeed - this.vx) * Math.min(1, accelRate / this.maxSpeed * 3);
+      }
+
+      if (this.onGround) {
+        this.walkCycle += dt * 14;
+        if (Math.random() < 0.2) {
+          window.particles.spawnDust(this.x, this.y, 1, this.facing);
+        }
+      }
+    } else if (this.onGround) {
+      // Snappy ground deceleration
+      const decel = this.friction * dt;
+      if (Math.abs(this.vx) <= decel) {
+        this.vx = 0;
+      } else {
+        this.vx -= Math.sign(this.vx) * decel;
+      }
+    }
+  }
+
+  jump() {
+    if (this.hitStunTimer > 0 || !this.isAlive) return;
+
+    const jumpMult = this.activeBuff && this.activeBuff.id === 'SPRING_SHOES' ? 1.35 : 1.0;
+
+    if (this.onGround || this.jumpsRemaining === 2) {
+      // First Jump
+      this.vy = this.jumpStrength * jumpMult;
+      this.onGround = false;
+      this.currentPlatform = null;
+      this.jumpsRemaining = 1;
+
+      // Stretch vertically
+      this.scaleX = 0.78;
+      this.scaleY = 1.32;
+      window.soundEngine.playJump();
+      window.particles.spawnDust(this.x, this.y, 6, 0);
+
+    } else if (this.jumpsRemaining === 1) {
+      // Double Jump
+      this.vy = this.doubleJumpStrength * jumpMult;
+      this.jumpsRemaining = 0;
+
+      // Air squash & stretch
+      this.scaleX = 0.75;
+      this.scaleY = 1.35;
+      window.soundEngine.playDoubleJump();
+      window.particles.spawnDust(this.x, this.y, 8, 0);
+      window.particles.spawnImpact(this.x, this.y, '#ffffff', 6, 0.4);
+    }
+  }
+
+  dropDown() {
+    if (this.onGround && this.currentPlatform && this.currentPlatform.type === 'jumpthrough') {
+      this.isDroppingDown = true;
+      this.dropDownTimer = 0.28; // Ignore collision for 0.28s
+      this.onGround = false;
+      this.currentPlatform = null;
+      this.y += 4;
+      this.vy = 80;
+    }
+  }
+
+  dash() {
+    if (this.dashCooldown > 0 || this.hitStunTimer > 0 || !this.isAlive) return;
+
+    this.isDashing = true;
+    this.dashTimer = this.dashDuration;
+    this.dashCooldown = this.activeBuff && this.activeBuff.id === 'SPEED_BOOTS' ? 0.45 : 0.85;
+    this.invulnerableTimer = this.dashDuration;
+
+    // Horizontal burst in facing direction
+    this.vx = this.facing * this.dashSpeed * (this.activeBuff && this.activeBuff.id === 'SPEED_BOOTS' ? 1.3 : 1.0);
+    this.vy = Math.min(this.vy, 0); // cancel downward fall briefly
+
+    // Horizontal stretch
+    this.scaleX = 1.45;
+    this.scaleY = 0.7;
+
+    window.soundEngine.playDash();
+    window.particles.spawnDust(this.x, this.y, 10, this.facing);
+    window.particles.spawnShockwave(this.x, this.y - this.radius, 35, '#00e5ff', 0.25);
+  }
+
+  attack() {
+    if (this.attackCooldown > 0 || this.hitStunTimer > 0 || !this.isAlive) return;
+
+    this.isAttacking = true;
+    this.attackTimer = this.attackDuration;
+    this.attackCooldown = 0.32;
+    this.attackHitFighters.clear();
+
+    // Small forward lunge
+    this.vx += this.facing * 180;
+
+    // Quick squash/stretch
+    this.scaleX = 1.25;
+    this.scaleY = 0.85;
+
+    window.soundEngine.playPunchSwing();
+  }
+
+  // --- TAKE HIT & KNOCKBACK ---
+  takeHit(attacker, damage, baseKnockback, angle) {
+    if (this.invulnerableTimer > 0 || !this.isAlive) return;
+
+    // 1. Check Bubble Shield
+    if (this.hasShield) {
+      this.hasShield = false;
+      if (this.activeBuff && this.activeBuff.id === 'BUBBLE_SHIELD') {
+        this.activeBuff = null;
+      }
+      this.invulnerableTimer = 0.4;
+      window.soundEngine.playShieldBreak();
+      window.particles.spawnShockwave(this.x, this.y - this.radius, 80, '#a855f7', 0.4);
+      window.particles.spawnCombatText(this.x, this.y - 45, 'BLOCKED!', '#a855f7', 22);
+
+      // Push attacker back slightly
+      attacker.vx = -attacker.facing * 350;
+      attacker.scaleX = 1.2;
+      return;
+    }
+
+    // 2. Accumulate Damage %
+    this.damagePercentage += damage;
+    attacker.damageDealt += damage;
+
+    // Knockback scaling: like Smash Bros, knockback increases exponentially with damage %
+    const knockbackMultiplier = 1 + (this.damagePercentage / 55);
+    const hasTitanFist = attacker.activeBuff && attacker.activeBuff.id === 'TITAN_FIST';
+    const buffMultiplier = hasTitanFist ? 2.5 : 1.0;
+
+    const totalKnockback = (baseKnockback * knockbackMultiplier * buffMultiplier);
+
+    this.vx = Math.cos(angle) * totalKnockback;
+    this.vy = Math.sin(angle) * totalKnockback;
+
+    // Stun duration scales with knockback
+    this.hitStunTimer = Math.min(0.65, 0.18 + (totalKnockback / 2400));
+    this.invulnerableTimer = 0.15;
+    this.onGround = false;
+    this.currentPlatform = null;
+
+    // Squash wobble
+    this.scaleX = 0.65;
+    this.scaleY = 1.45;
+
+    // Hit-stop effect (micro freeze frame)
+    window.gameEngine.triggerHitStop(hasTitanFist ? 70 : 45);
+
+    // Audio & Particles
+    window.soundEngine.playHit(hasTitanFist || totalKnockback > 700);
+    window.particles.spawnImpact(this.x, this.y - this.radius, hasTitanFist ? '#ff3300' : '#ffcc00', 18, 1.2);
+
+    const hitWord = totalKnockback > 900 ? 'SMASH!' : (totalKnockback > 500 ? 'POW!' : 'HIT!');
+    window.particles.spawnCombatText(this.x, this.y - 45, hitWord, '#ffde59', totalKnockback > 800 ? 30 : 22);
+
+    // Screen Shake on strong hits
+    if (totalKnockback > 600) {
+      window.gameCamera.shake(Math.min(18, totalKnockback / 60));
+    }
+
+    this.lastAttacker = attacker;
+  }
+
+  // --- STOMP / HEAD BOUNCE ---
+  stomp(victim) {
+    if (!this.isAlive || !victim.isAlive) return;
+
+    // Stomper bounces up high
+    this.vy = -680;
+    this.onGround = false;
+    this.jumpsRemaining = 1;
+    this.scaleX = 0.7;
+    this.scaleY = 1.4;
+
+    // Victim gets squashed downward
+    victim.damagePercentage += 12;
+    this.damageDealt += 12;
+    victim.vy = 450;
+    victim.scaleX = 1.5;
+    victim.scaleY = 0.55;
+    victim.hitStunTimer = 0.25;
+
+    window.gameEngine.triggerHitStop(40);
+    window.soundEngine.playStomp();
+    window.particles.spawnShockwave(victim.x, victim.y - victim.radius * 2, 50, '#ff3344', 0.25);
+    window.particles.spawnCombatText(victim.x, victim.y - 50, 'SQUISH!', '#ff3344', 24);
+    window.gameCamera.shake(8);
+
+    victim.lastAttacker = this;
+  }
+
+  // --- UPDATE LOOP ---
+  update(dt, arena) {
+    if (!this.isAlive) return;
+
+    this.survivalTime += dt;
+
+    // 1. Timers
+    if (this.hitStunTimer > 0) this.hitStunTimer -= dt;
+    if (this.invulnerableTimer > 0) this.invulnerableTimer -= dt;
+    if (this.attackCooldown > 0) this.attackCooldown -= dt;
+    if (this.dashCooldown > 0) this.dashCooldown -= dt;
+
+    if (this.dropDownTimer > 0) {
+      this.dropDownTimer -= dt;
+      if (this.dropDownTimer <= 0) {
+        this.isDroppingDown = false;
+      }
+    }
+
+    // Active Attack Timer
+    if (this.isAttacking) {
+      this.attackTimer -= dt;
+      if (this.attackTimer <= 0) {
+        this.isAttacking = false;
+      }
+    }
+
+    // Active Dash Timer
+    if (this.isDashing) {
+      this.dashTimer -= dt;
+      if (this.dashTimer <= 0) {
+        this.isDashing = false;
+      }
+    }
+
+    // Active Buff Timer
+    if (this.activeBuff) {
+      this.activeBuff.remaining -= dt;
+      if (this.activeBuff.remaining <= 0) {
+        this.activeBuff = null;
+      }
+    }
+
+    // 2. Physics & Gravity
+    if (!this.onGround) {
+      this.vy += this.gravity * dt;
+      // Air drag
+      this.vx *= Math.pow(0.985, dt * 60);
+    } else {
+      // Carry momentum of moving platforms
+      if (this.currentPlatform && this.currentPlatform.style === 'moving') {
+        this.x += (this.currentPlatform.vx || 0) * dt;
+        this.y += (this.currentPlatform.vy || 0) * dt;
+      }
+    }
+
+    // Terminal velocity clamp to prevent glitchy tunneling
+    this.vx = Math.max(-1200, Math.min(1200, this.vx));
+    this.vy = Math.max(-1400, Math.min(1300, this.vy));
+
+    // Position integration
+    this.x += this.vx * dt;
+    this.y += this.vy * dt;
+
+    // 3. Platform Collisions
+    this.resolvePlatformCollisions(arena);
+
+    // 4. Spring Pad Bounce Check
+    arena.checkSpringPad(this);
+
+    // 5. Blast Zone Check (Elimination)
+    const bz = arena.blastZones;
+    if (this.x < bz.left || this.x > bz.right || this.y < bz.top || this.y > bz.bottom) {
+      this.eliminate();
+      return;
+    }
+
+    // 6. Squash & Stretch Spring Physics (Damped Harmonic Oscillator)
+    const fx = -this.springK * (this.scaleX - 1.0) - this.springDamping * this.scaleVx;
+    const fy = -this.springK * (this.scaleY - 1.0) - this.springDamping * this.scaleVy;
+    this.scaleVx += fx * dt;
+    this.scaleVy += fy * dt;
+    this.scaleX += this.scaleVx * dt;
+    this.scaleY += this.scaleVy * dt;
+
+    // Clamp scales to pleasant range
+    this.scaleX = Math.max(0.4, Math.min(1.8, this.scaleX));
+    this.scaleY = Math.max(0.4, Math.min(1.8, this.scaleY));
+
+    // 7. Eye blinking logic
+    this.eyeBlinkTimer -= dt;
+    if (this.eyeBlinkTimer <= 0) {
+      this.isBlinking = true;
+      if (this.eyeBlinkTimer <= -0.15) {
+        this.isBlinking = false;
+        this.eyeBlinkTimer = 2 + Math.random() * 4;
+      }
+    }
+  }
+
+  // --- PLATFORM COLLISION RESOLUTION ---
+  resolvePlatformCollisions(arena) {
+    const prevOnGround = this.onGround;
+    let groundedThisFrame = false;
+
+    // Foot check point
+    const footX = this.x;
+    const footY = this.y;
+
+    for (const plat of arena.platforms) {
+      if (plat.type === 'jumpthrough') {
+        if (this.isDroppingDown) continue; // ignore jumpthrough when pressing S/down
+
+        // Only land when falling downward through top surface
+        if (this.vy >= 0 &&
+            footX >= plat.x - 12 &&
+            footX <= plat.x + plat.w + 12 &&
+            footY >= plat.y - 2 &&
+            footY <= plat.y + 18) {
+          this.y = plat.y;
+          this.vy = 0;
+          this.onGround = true;
+          this.currentPlatform = plat;
+          this.jumpsRemaining = 2;
+          groundedThisFrame = true;
+
+          // Land squish
+          if (!prevOnGround) {
+            this.scaleX = 1.35;
+            this.scaleY = 0.65;
+            window.soundEngine.playHit(false);
+            window.particles.spawnDust(this.x, this.y, 5, 0);
+          }
+          break;
+        }
+      } else {
+        // Solid Platform: Check top, sides, bottom
+        const left = plat.x;
+        const right = plat.x + plat.w;
+        const top = plat.y;
+        const bottom = plat.y + plat.h;
+
+        // Feet on top
+        if (this.vy >= 0 &&
+            footX >= left - 10 &&
+            footX <= right + 10 &&
+            footY >= top - 2 &&
+            footY <= top + 22) {
+          this.y = top;
+          this.vy = 0;
+          this.onGround = true;
+          this.currentPlatform = plat;
+          this.jumpsRemaining = 2;
+          groundedThisFrame = true;
+
+          if (!prevOnGround) {
+            this.scaleX = 1.35;
+            this.scaleY = 0.65;
+            window.soundEngine.playHit(false);
+            window.particles.spawnDust(this.x, this.y, 6, 0);
+          }
+          break;
+        }
+
+        // Head hit ceiling
+        const headY = this.y - this.radius * 2;
+        if (this.vy < 0 &&
+            footX >= left &&
+            footX <= right &&
+            headY <= bottom &&
+            headY >= bottom - 18) {
+          this.y = bottom + this.radius * 2;
+          this.vy = 50; // bump down
+          this.scaleX = 1.25;
+          this.scaleY = 0.75;
+          window.particles.spawnDust(this.x, bottom, 4, 0);
+        }
+
+        // Side walls collision
+        const bodyCenterY = this.y - this.radius;
+        if (bodyCenterY > top && bodyCenterY < bottom) {
+          if (this.vx > 0 && this.x + this.radius >= left && this.x < left + 15) {
+            this.x = left - this.radius;
+            this.vx = 0;
+          } else if (this.vx < 0 && this.x - this.radius <= right && this.x > right - 15) {
+            this.x = right + this.radius;
+            this.vx = 0;
+          }
+        }
+      }
+    }
+
+    if (!groundedThisFrame && this.onGround) {
+      // Walked off edge
+      this.onGround = false;
+      this.currentPlatform = null;
+      if (this.jumpsRemaining === 2) {
+        this.jumpsRemaining = 1; // can still double-jump
+      }
+    }
+  }
+
+  // --- ELIMINATION ---
+  eliminate() {
+    if (!this.isAlive) return;
+    this.isAlive = false;
+
+    window.soundEngine.playElimination();
+    window.particles.spawnRingoutExplosion(this.x, this.y);
+    window.gameCamera.shake(20);
+
+    if (this.lastAttacker && this.lastAttacker !== this) {
+      this.lastAttacker.kills++;
+      window.particles.spawnCombatText(
+        this.lastAttacker.x,
+        this.lastAttacker.y - 50,
+        '+1 KO!',
+        '#ffde59',
+        26
+      );
+    }
+
+    window.gameEngine.onFighterEliminated(this);
+  }
+
+  // --- RENDER CHARACTER ---
+  render(ctx) {
+    if (!this.isAlive) return;
+
+    ctx.save();
+    // Center at character base/feet
+    ctx.translate(this.x, this.y);
+
+    // Ground Shadow
+    if (this.onGround) {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.28)';
+      ctx.beginPath();
+      ctx.ellipse(0, 0, this.radius * 0.9 * this.scaleX, 6 * this.scaleY, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Apply Squash & Stretch scaling
+    ctx.scale(this.scaleX, this.scaleY);
+
+    // Invulnerability flashing (e.g. on respawn or dash)
+    if (this.invulnerableTimer > 0 && Math.floor(this.invulnerableTimer * 20) % 2 === 0) {
+      ctx.globalAlpha = 0.55;
+    }
+
+    const bodyRadius = this.radius;
+    const bodyCenterY = -bodyRadius;
+
+    // 1. Outer Power-up Buff Aura or Shield
+    if (this.hasShield) {
+      ctx.beginPath();
+      ctx.arc(0, bodyCenterY, bodyRadius + 10, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(168, 85, 247, 0.25)';
+      ctx.fill();
+      ctx.strokeStyle = '#c084fc';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+    } else if (this.activeBuff) {
+      ctx.beginPath();
+      ctx.arc(0, bodyCenterY, bodyRadius + 8, 0, Math.PI * 2);
+      ctx.fillStyle = this.activeBuff.aura;
+      ctx.fill();
+      ctx.strokeStyle = this.activeBuff.color;
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+    }
+
+    // 2. Character Body (RED for Player, GREEN/BLUE/YELLOW for Bots)
+    const theme = this.theme;
+    const bodyGrad = ctx.createRadialGradient(-6, bodyCenterY - 6, 4, 0, bodyCenterY, bodyRadius + 4);
+    bodyGrad.addColorStop(0, theme.gradTop);
+    bodyGrad.addColorStop(0.65, theme.gradMid);
+    bodyGrad.addColorStop(1, theme.gradBottom);
+
+    ctx.fillStyle = bodyGrad;
+    ctx.beginPath();
+    ctx.arc(0, bodyCenterY, bodyRadius, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Subtle outline (gold outline for Player, specific dark outline for Bots)
+    ctx.strokeStyle = theme.outline;
+    ctx.lineWidth = theme.outlineWidth;
+    ctx.stroke();
+
+    // 3. Cute Cartoon Eyes
+    const eyeOffsetX = this.facing * 7;
+    const eyeY = bodyCenterY - 2;
+
+    if (!this.isBlinking) {
+      // Left & Right eye whites
+      ctx.fillStyle = '#ffffff';
+
+      if (this.accessory === 'propeller') {
+        // Wobble's chaotic dizzy swirling eyes!
+        [-6, 6].forEach(ox => {
+          ctx.beginPath();
+          ctx.arc(ox + eyeOffsetX, eyeY, 6, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = '#000000';
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+
+          // Spiral
+          ctx.fillStyle = '#000000';
+          ctx.beginPath();
+          ctx.arc(ox + eyeOffsetX + Math.sin(window.arena.time * 8) * 2, eyeY, 2.5, 0, Math.PI * 2);
+          ctx.fill();
+        });
+      } else {
+        // Standard expressive brawler eyes
+        [-6, 6].forEach(ox => {
+          ctx.beginPath();
+          ctx.ellipse(ox + eyeOffsetX, eyeY, 4.5, 6, 0, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Black Pupil tracking facing direction
+          ctx.fillStyle = '#111827';
+          ctx.beginPath();
+          ctx.arc(ox + eyeOffsetX + (this.facing * 2), eyeY + 0.5, 2.6, 0, Math.PI * 2);
+          ctx.fill();
+
+          // White Sparkle reflection
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          ctx.arc(ox + eyeOffsetX + (this.facing * 1.5) - 1, eyeY - 2, 1.2, 0, Math.PI * 2);
+          ctx.fill();
+        });
+      }
+
+      // Bot 1 (Blaze) has aggressive angry eyebrows
+      if (this.accessory === 'mohawk') {
+        ctx.strokeStyle = '#2b0006';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.moveTo(-11 + eyeOffsetX, eyeY - 8);
+        ctx.lineTo(-2 + eyeOffsetX, eyeY - 5);
+        ctx.moveTo(11 + eyeOffsetX, eyeY - 8);
+        ctx.lineTo(2 + eyeOffsetX, eyeY - 5);
+        ctx.stroke();
+      }
+    } else {
+      // Blink lines
+      ctx.strokeStyle = '#220005';
+      ctx.lineWidth = 2.5;
+      [-6, 6].forEach(ox => {
+        ctx.beginPath();
+        ctx.moveTo(ox + eyeOffsetX - 4, eyeY);
+        ctx.lineTo(ox + eyeOffsetX + 4, eyeY);
+        ctx.stroke();
+      });
+    }
+
+    // 4. Distinctive Accessories (Keeps red fighters instantly recognizable!)
+    if (this.accessory === 'crown') {
+      // PLAYER: Gleaming Golden Crown
+      const crownY = bodyCenterY - bodyRadius + 4;
+      ctx.fillStyle = '#ffcc00';
+      ctx.strokeStyle = '#b38f00';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(-16, crownY);
+      ctx.lineTo(-14, crownY - 14);
+      ctx.lineTo(-6, crownY - 6);
+      ctx.lineTo(0, crownY - 16);
+      ctx.lineTo(6, crownY - 6);
+      ctx.lineTo(14, crownY - 14);
+      ctx.lineTo(16, crownY);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Crown Ruby Jewel
+      ctx.fillStyle = '#00e5ff';
+      ctx.beginPath();
+      ctx.arc(0, crownY - 4, 3, 0, Math.PI * 2);
+      ctx.fill();
+
+    } else if (this.accessory === 'mohawk') {
+      // BOT 1 (Blaze): Fiery Punk Mohawk Spikes
+      const mohawkY = bodyCenterY - bodyRadius + 4;
+      ctx.fillStyle = '#ffdd00';
+      ctx.strokeStyle = '#ff5500';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(-12, mohawkY);
+      ctx.lineTo(-7, mohawkY - 15);
+      ctx.lineTo(-2, mohawkY - 8);
+      ctx.lineTo(3, mohawkY - 18);
+      ctx.lineTo(8, mohawkY - 8);
+      ctx.lineTo(13, mohawkY - 14);
+      ctx.lineTo(14, mohawkY);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+    } else if (this.accessory === 'horns') {
+      // BOT 2 (Aegis): Viking Horns & Visor
+      const hornY = bodyCenterY - bodyRadius + 6;
+      ctx.fillStyle = '#e2e8f0';
+      ctx.strokeStyle = '#94a3b8';
+      ctx.lineWidth = 2;
+
+      // Left Horn
+      ctx.beginPath();
+      ctx.moveTo(-14, hornY);
+      ctx.quadraticCurveTo(-22, hornY - 14, -18, hornY - 18);
+      ctx.quadraticCurveTo(-14, hornY - 12, -8, hornY - 4);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Right Horn
+      ctx.beginPath();
+      ctx.moveTo(14, hornY);
+      ctx.quadraticCurveTo(22, hornY - 14, 18, hornY - 18);
+      ctx.quadraticCurveTo(14, hornY - 12, 8, hornY - 4);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+    } else if (this.accessory === 'propeller') {
+      // BOT 3 (Wobble): Striped Propeller Beanie
+      const capY = bodyCenterY - bodyRadius + 4;
+      // Cap dome
+      ctx.fillStyle = '#3b82f6';
+      ctx.beginPath();
+      ctx.arc(0, capY, 12, Math.PI, 0);
+      ctx.fill();
+
+      // Spinny propeller
+      const spin = Math.sin(window.arena.time * 24) * 14;
+      ctx.strokeStyle = '#ffde59';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(-spin, capY - 12);
+      ctx.lineTo(spin, capY - 12);
+      ctx.stroke();
+
+      // Cap pin
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(0, capY - 12, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // 5. Attack / Punch Fist Rendering
+    if (this.isAttacking) {
+      const punchProgress = (this.attackDuration - this.attackTimer) / this.attackDuration;
+      const punchDist = Math.sin(punchProgress * Math.PI) * 36;
+      const fistX = this.facing * (bodyRadius + punchDist);
+      const fistY = bodyCenterY + 4;
+
+      // Boxing glove fist
+      const hasTitanFist = this.activeBuff && this.activeBuff.id === 'TITAN_FIST';
+      ctx.fillStyle = hasTitanFist ? '#ff3300' : this.theme.fistColor;
+      ctx.strokeStyle = hasTitanFist ? '#ffff00' : this.theme.fistOutline;
+      ctx.lineWidth = 3;
+
+      ctx.beginPath();
+      ctx.arc(fistX, fistY, hasTitanFist ? 16 : 12, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      // Wind streak
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(this.facing * bodyRadius, fistY);
+      ctx.lineTo(fistX, fistY);
+      ctx.stroke();
+    }
+
+    // Restore transforms for HUD overhead tag
+    ctx.restore();
+
+    // 6. Overhead Tag (Always facing upright without squash deformation)
+    ctx.save();
+    ctx.translate(this.x, this.y - this.radius * 2 * this.scaleY - 12);
+
+    if (!this.isBot) {
+      // Clear bright "YOU" indicator for the player
+      ctx.fillStyle = '#ffcc00';
+      ctx.font = '900 13px "Fredoka", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'bottom';
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+      ctx.shadowBlur = 4;
+      ctx.fillText('▼ YOU ▼', 0, -4);
+    } else {
+      // Bot short name tag
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
+      ctx.font = '800 10px "Fredoka", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'bottom';
+      ctx.fillText(this.name.toUpperCase(), 0, -4);
+    }
+
+    // Overhead Damage % indicator
+    const dmgColor = this.damagePercentage > 100 ? '#ff3344' : (this.damagePercentage > 50 ? '#ffde59' : '#ffffff');
+    ctx.fillStyle = dmgColor;
+    ctx.font = '900 12px "Fredoka", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.fillText(`${Math.round(this.damagePercentage)}%`, 0, -2);
+
+    ctx.restore();
+  }
+}
