@@ -70,28 +70,39 @@ class GameCamera {
         if (f.y > maxY) maxY = f.y;
       }
 
+      // Check if running on mobile device or compact mobile viewport
+      const isMobile = this.viewWidth <= 920 || this.viewHeight <= 520 || (window.input && window.input.isTouchDevice);
+
       // Bias camera center slightly toward the human player so player is never lost
+      // On mobile, lift centerY higher up so the player and platforms are never obscured by bottom touch controls!
+      const verticalOffset = isMobile ? -65 : -40;
       let centerX = (minX + maxX) / 2;
-      let centerY = (minY + maxY) / 2 - 40;
+      let centerY = (minY + maxY) / 2 + verticalOffset;
 
       if (player && player.isAlive) {
-        centerX = centerX * 0.4 + player.x * 0.6;
-        centerY = centerY * 0.4 + (player.y - 40) * 0.6;
+        centerX = centerX * 0.35 + player.x * 0.65;
+        centerY = centerY * 0.35 + (player.y + verticalOffset) * 0.65;
       }
 
       this.targetX = centerX;
       this.targetY = centerY;
 
-      // 3. Dynamic Zoom Framing
-      const spreadX = Math.max(380, maxX - minX + 280);
-      const spreadY = Math.max(260, maxY - minY + 240);
+      // 3. Dynamic Zoom Framing adapted to Mobile and Desktop
+      // Extra horizontal and vertical padding on mobile provides full situational awareness
+      const padX = isMobile ? 360 : 280;
+      const padY = isMobile ? 320 : 240;
+      const spreadX = Math.max(380, maxX - minX + padX);
+      const spreadY = Math.max(260, maxY - minY + padY);
 
       const zoomX = this.viewWidth / spreadX;
       const zoomY = this.viewHeight / spreadY;
       let idealZoom = Math.min(zoomX, zoomY);
 
-      // Clamp zoom to maintain readability (not too far, not too close)
-      idealZoom = Math.max(0.68, Math.min(1.22, idealZoom));
+      // Clamp zoom to maintain readability:
+      // Mobile screens get a balanced wider zoom so nearby platforms and enemies stay visible
+      const minZoom = isMobile ? 0.52 : 0.65;
+      const maxZoom = isMobile ? 0.98 : 1.22;
+      idealZoom = Math.max(minZoom, Math.min(maxZoom, idealZoom));
       this.targetZoom = idealZoom;
     }
 
@@ -102,7 +113,7 @@ class GameCamera {
 
     // Clamp camera within soft arena bounds
     this.x = Math.max(200, Math.min(1600, this.x));
-    this.y = Math.max(250, Math.min(850, this.y));
+    this.y = Math.max(200, Math.min(820, this.y));
   }
 
   // Apply camera matrix to 2D context

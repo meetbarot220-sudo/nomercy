@@ -861,23 +861,15 @@ class Fighter {
       ctx.textBaseline = 'bottom';
       ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
       ctx.shadowBlur = 4;
-      ctx.fillText('▼ YOU ▼', 0, -4);
+      ctx.fillText('▼ YOU ▼', 0, 0);
     } else {
       // Bot short name tag
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
-      ctx.font = '800 10px "Fredoka", sans-serif';
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+      ctx.font = '800 11px "Fredoka", sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'bottom';
-      ctx.fillText(this.name.toUpperCase(), 0, -4);
+      ctx.fillText(this.name.toUpperCase(), 0, 0);
     }
-
-    // Overhead Damage % indicator
-    const dmgColor = this.damagePercentage > 100 ? '#ff3344' : (this.damagePercentage > 50 ? '#ffde59' : '#ffffff');
-    ctx.fillStyle = dmgColor;
-    ctx.font = '900 12px "Fredoka", sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'top';
-    ctx.fillText(`${Math.round(this.damagePercentage)}%`, 0, -2);
 
     ctx.restore();
   }

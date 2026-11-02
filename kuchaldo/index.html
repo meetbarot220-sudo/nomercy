@@ -13,32 +13,63 @@
   <div id="game-container">
     <canvas id="game-canvas"></canvas>
 
-    <!-- Top Match HUD -->
+    <!-- Top Match HUD (Responsive 3-Column: Player Left, Timer Center, Bots Right) -->
     <header id="hud" class="hud-layer">
+      <!-- TOP-LEFT: Player Information (Clean badge without damage percentage) -->
       <div class="hud-left">
-        <div class="match-timer-box">
+        <div class="player-hud-card" id="hud-player-card">
+          <span class="hud-avatar">👑</span>
+          <span class="hud-name">YOU <small>(RED)</small></span>
+        </div>
+      </div>
+
+      <!-- TOP-CENTER: Large Always-Centered Match Timer -->
+      <div class="hud-center">
+        <div class="match-timer-box" id="match-timer-container">
           <span class="timer-icon">⏱</span>
           <span id="match-timer">02:00</span>
         </div>
-        <div class="alive-count-box">
-          <span class="alive-icon">⚔️</span>
-          <span id="alive-count">4/4 ALIVE</span>
-        </div>
       </div>
 
-      <div class="hud-center">
-        <!-- Fighter Status Cards -->
-        <div class="fighters-hud" id="fighters-hud">
-          <!-- Dynamically populated -->
-        </div>
-      </div>
-
+      <!-- TOP-RIGHT: Remaining Bots & Quick Settings -->
       <div class="hud-right">
-        <button id="btn-sound" class="hud-btn" title="Toggle Sound (M)" aria-label="Toggle Sound">🔊</button>
-        <button id="btn-music" class="hud-btn" title="Toggle Music (B)" aria-label="Toggle Music">🎵</button>
-        <button id="btn-fullscreen" class="hud-btn" title="Fullscreen" aria-label="Toggle Fullscreen">⛶</button>
+        <div class="bots-hud-box" id="bots-hud-box">
+          <div class="bots-count-pill" id="bots-count-pill">
+            <span class="bots-icon">🤖</span>
+            <span id="alive-count">BOTS: 3/3</span>
+          </div>
+          <!-- Mini Bot Status Indicators (Clean status dots and names) -->
+          <div class="bots-status-row" id="bots-status-row">
+            <div class="bot-status-item bot-blaze" id="card-dmg-bot_blaze" title="Blaze (Green)">
+              <span class="bot-dot dot-green"></span>
+              <span class="bot-short">BLAZE</span>
+            </div>
+            <div class="bot-status-item bot-aegis" id="card-dmg-bot_aegis" title="Aegis (Blue)">
+              <span class="bot-dot dot-blue"></span>
+              <span class="bot-short">AEGIS</span>
+            </div>
+            <div class="bot-status-item bot-wobble" id="card-dmg-bot_wobble" title="Wobble (Yellow)">
+              <span class="bot-dot dot-yellow"></span>
+              <span class="bot-short">WOBBLE</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="hud-buttons-cluster">
+          <button id="btn-sound" class="hud-btn" title="Toggle Sound (M)" aria-label="Toggle Sound">🔊</button>
+          <button id="btn-music" class="hud-btn" title="Toggle Music (B)" aria-label="Toggle Music">🎵</button>
+          <button id="btn-fullscreen" class="hud-btn" title="Fullscreen" aria-label="Toggle Fullscreen">⛶</button>
+        </div>
       </div>
     </header>
+
+    <!-- Portrait Mode Orientation Notice (Only shown on mobile touch devices held vertically) -->
+    <div id="rotate-device-notice" class="rotate-notice hidden">
+      <div class="rotate-notice-pill">
+        <span class="rotate-icon">🔄</span>
+        <span class="rotate-text">Rotate device to landscape for best view</span>
+      </div>
+    </div>
 
     <!-- Center Announcer & Overlay Banner -->
     <div id="announcer-overlay" class="announcer-overlay hidden">
@@ -127,34 +158,29 @@
       </div>
     </div>
 
-    <!-- Mobile Touch Controls Layer (HIDDEN on Desktop, ONLY shown on touch devices) -->
-    <div id="mobile-controls" class="mobile-controls-layer hidden">
-      <!-- Left D-Pad -->
-      <div class="mobile-dpad">
+    <!-- Mobile Touch Controls Layer (Automatically shown on mobile / touch devices, strictly hidden on PC) -->
+    <div id="mobile-controls" class="mobile-controls-layer">
+      <!-- Bottom-Left: ◀ LEFT and ▶ RIGHT -->
+      <div class="mobile-cluster-left">
         <button id="touch-left" class="touch-btn dpad-btn" data-key="left" aria-label="Left">
-          <svg viewBox="0 0 24 24"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
-        </button>
-        <button id="touch-down" class="touch-btn dpad-btn dpad-down" data-key="down" aria-label="Drop Down">
-          <svg viewBox="0 0 24 24"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg>
+          <span class="touch-arrow">◀</span>
+          <span class="touch-label">LEFT</span>
         </button>
         <button id="touch-right" class="touch-btn dpad-btn" data-key="right" aria-label="Right">
-          <svg viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+          <span class="touch-arrow">▶</span>
+          <span class="touch-label">RIGHT</span>
         </button>
       </div>
 
-      <!-- Right Action Cluster -->
-      <div class="mobile-actions">
-        <button id="touch-dash" class="touch-btn action-circle dash-circle" data-key="dash" aria-label="Dash">
-          <span class="touch-icon">💨</span>
-          <span class="touch-text">DASH</span>
+      <!-- Bottom-Right: JUMP and ATTACK -->
+      <div class="mobile-cluster-right">
+        <button id="touch-jump" class="touch-btn action-circle jump-circle" data-key="jump" aria-label="Jump">
+          <span class="touch-icon">⬆️</span>
+          <span class="touch-label">JUMP</span>
         </button>
         <button id="touch-attack" class="touch-btn action-circle attack-circle" data-key="attack" aria-label="Attack">
           <span class="touch-icon">🥊</span>
-          <span class="touch-text">PUNCH</span>
-        </button>
-        <button id="touch-jump" class="touch-btn action-circle jump-circle" data-key="jump" aria-label="Jump">
-          <span class="touch-icon">⬆️</span>
-          <span class="touch-text">JUMP</span>
+          <span class="touch-label">ATTACK</span>
         </button>
       </div>
     </div>

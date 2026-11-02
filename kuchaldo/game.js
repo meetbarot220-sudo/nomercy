@@ -202,37 +202,13 @@ class GameEngine {
 
   // Build HUD Fighter Status Cards
   buildFightersHUD() {
-    const container = document.getElementById('fighters-hud');
-    if (!container) return;
-    container.innerHTML = '';
-
-    const accessoryIcons = {
-      crown: '👑',
-      mohawk: '⚡',
-      horns: '🛡️',
-      propeller: '🌀'
-    };
-
-    this.fighters.forEach(f => {
-      const card = document.createElement('div');
-      card.id = `fighter-card-${f.id}`;
-      card.className = `fighter-card ${!f.isBot ? 'player-card' : ''}`;
-      card.style.borderColor = f.theme.cardBorder;
-
-      card.innerHTML = `
-        <div class="fighter-card-avatar">${accessoryIcons[f.accessory] || '🥊'}</div>
-        <div class="fighter-card-info">
-          <span class="fighter-card-name" style="color:${f.theme.cardBorder}">${f.name}</span>
-          <span class="fighter-card-damage" id="card-dmg-${f.id}">0%</span>
-        </div>
-      `;
-      container.appendChild(card);
-    });
+    // Initial HUD elements are pre-rendered in HTML for zero-delay layout stability
+    this.updateHUD();
   }
 
   // Update HUD values
   updateHUD() {
-    // 1. Timer
+    // 1. Center Timer
     const timerElem = document.getElementById('match-timer');
     if (timerElem) {
       const mins = Math.floor(Math.max(0, this.matchTime) / 60);
@@ -240,30 +216,32 @@ class GameEngine {
       timerElem.textContent = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     }
 
-    // 2. Remaining Bots Count
+    // 2. Top-Left Player Information (clean badge without damage percentage)
+    const playerCard = document.getElementById('hud-player-card');
+    if (this.player && playerCard) {
+      if (!this.player.isAlive) {
+        playerCard.classList.add('eliminated');
+      } else {
+        playerCard.classList.remove('eliminated');
+      }
+    }
+
+    // 3. Top-Right Bots Remaining Count
     const aliveBots = this.fighters.filter(f => f.isBot && f.isAlive).length;
     const aliveElem = document.getElementById('alive-count');
     if (aliveElem) {
-      aliveElem.innerHTML = `🤖 BOTS: <span style="color:#ffde59;font-weight:900;">${aliveBots}/3</span>`;
+      aliveElem.innerHTML = `BOTS: <span style="color:#ffde59;font-weight:900;">${aliveBots}/3</span>`;
     }
 
-    // 3. Cards Damage & Eliminated state
-    this.fighters.forEach(f => {
-      const card = document.getElementById(`fighter-card-${f.id}`);
-      const dmgElem = document.getElementById(`card-dmg-${f.id}`);
-      if (card && dmgElem) {
-        if (!f.isAlive) {
-          card.classList.add('eliminated');
-          dmgElem.textContent = 'K.O.';
-          dmgElem.classList.remove('high-danger');
+    // 4. Individual Bot Mini Indicators
+    const bots = this.fighters.filter(f => f.isBot);
+    bots.forEach(b => {
+      const item = document.getElementById(`card-dmg-${b.id}`);
+      if (item) {
+        if (!b.isAlive) {
+          item.classList.add('eliminated');
         } else {
-          card.classList.remove('eliminated');
-          dmgElem.textContent = `${Math.round(f.damagePercentage)}%`;
-          if (f.damagePercentage >= 95) {
-            dmgElem.classList.add('high-danger');
-          } else {
-            dmgElem.classList.remove('high-danger');
-          }
+          item.classList.remove('eliminated');
         }
       }
     });
@@ -274,11 +252,15 @@ class GameEngine {
     // Hide Modals
     document.getElementById('title-screen').classList.add('hidden');
     document.getElementById('game-over-modal').classList.add('hidden');
+    document.body.classList.remove('game-over');
 
     // Restore Mobile Touch Controls if on a touch device
     if (window.input && window.input.isTouchDevice) {
       const mobileControls = document.getElementById('mobile-controls');
       if (mobileControls) mobileControls.classList.remove('hidden');
+
+      const rotateNotice = document.getElementById('rotate-device-notice');
+      if (rotateNotice) rotateNotice.classList.remove('hidden');
     }
 
     // Reset systems
@@ -336,16 +318,21 @@ class GameEngine {
   // --- END MATCH ---
   endMatch(outcome) {
     this.state = 'GAME_OVER';
+    document.body.classList.add('game-over');
 
     // Reset and freeze all input states
     if (window.input) {
       window.input.reset();
     }
 
-    // Immediately hide and disable mobile touch controls upon death
+    // Immediately hide and disable mobile touch controls and notices upon game over
     const mobileControls = document.getElementById('mobile-controls');
     if (mobileControls) {
       mobileControls.classList.add('hidden');
+    }
+    const rotateNotice = document.getElementById('rotate-device-notice');
+    if (rotateNotice) {
+      rotateNotice.classList.add('hidden');
     }
 
     const modal = document.getElementById('game-over-modal');
@@ -480,7 +467,7 @@ class GameEngine {
 
       this.player.move(moveDir, dt);
 
-      if (window.input.isJustPressed('jump')) {
+      if (window.input.isJustPressed('jump') || (window.input.isDown('jump') && this.player.onGround && this.player.vy >= 0)) {
         this.player.jump();
       }
 
@@ -489,7 +476,7 @@ class GameEngine {
       }
 
       if (this.state === 'PLAYING') {
-        if (window.input.isJustPressed('attack')) {
+        if (window.input.isJustPressed('attack') || (window.input.isDown('attack') && this.player.attackCooldown <= 0)) {
           this.player.attack();
         }
         if (window.input.isJustPressed('dash')) {
