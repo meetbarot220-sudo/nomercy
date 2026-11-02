@@ -50,13 +50,16 @@ class GameCamera {
       }
     }
 
+    const isPortrait = this.viewHeight > this.viewWidth;
+    const isMobile = isPortrait || this.viewWidth <= 920 || this.viewHeight <= 520 || (window.input && window.input.isTouchDevice);
+
     // 2. Determine target camera bounds based on active fighters
     const activeFighters = fighters.filter(f => f.isAlive);
 
     if (activeFighters.length === 0) {
       this.targetX = 900;
-      this.targetY = 600;
-      this.targetZoom = 0.85;
+      this.targetY = isPortrait ? 520 : 600;
+      this.targetZoom = isPortrait ? 0.62 : 0.85;
     } else {
       let minX = Infinity;
       let maxX = -Infinity;
@@ -70,12 +73,9 @@ class GameCamera {
         if (f.y > maxY) maxY = f.y;
       }
 
-      // Check if running on mobile device or compact mobile viewport
-      const isMobile = this.viewWidth <= 920 || this.viewHeight <= 520 || (window.input && window.input.isTouchDevice);
-
       // Bias camera center slightly toward the human player so player is never lost
-      // On mobile, lift centerY higher up so the player and platforms are never obscured by bottom touch controls!
-      const verticalOffset = isMobile ? -65 : -40;
+      // On portrait / mobile, lift centerY higher so player and platforms are never obscured by bottom touch controls!
+      const verticalOffset = isPortrait ? -90 : (isMobile ? -65 : -40);
       let centerX = (minX + maxX) / 2;
       let centerY = (minY + maxY) / 2 + verticalOffset;
 
@@ -87,21 +87,19 @@ class GameCamera {
       this.targetX = centerX;
       this.targetY = centerY;
 
-      // 3. Dynamic Zoom Framing adapted to Mobile and Desktop
-      // Extra horizontal and vertical padding on mobile provides full situational awareness
-      const padX = isMobile ? 360 : 280;
-      const padY = isMobile ? 320 : 240;
-      const spreadX = Math.max(380, maxX - minX + padX);
+      // 3. Dynamic Zoom Framing adapted to Mobile, Portrait and Desktop
+      const padX = isPortrait ? 260 : (isMobile ? 360 : 280);
+      const padY = isPortrait ? 360 : (isMobile ? 320 : 240);
+      const spreadX = Math.max(340, maxX - minX + padX);
       const spreadY = Math.max(260, maxY - minY + padY);
 
       const zoomX = this.viewWidth / spreadX;
       const zoomY = this.viewHeight / spreadY;
       let idealZoom = Math.min(zoomX, zoomY);
 
-      // Clamp zoom to maintain readability:
-      // Mobile screens get a balanced wider zoom so nearby platforms and enemies stay visible
-      const minZoom = isMobile ? 0.52 : 0.65;
-      const maxZoom = isMobile ? 0.98 : 1.22;
+      // Clamp zoom to maintain crispness and readability in portrait & landscape
+      const minZoom = isPortrait ? 0.40 : (isMobile ? 0.52 : 0.65);
+      const maxZoom = isPortrait ? 0.85 : (isMobile ? 0.98 : 1.22);
       idealZoom = Math.max(minZoom, Math.min(maxZoom, idealZoom));
       this.targetZoom = idealZoom;
     }
@@ -112,7 +110,9 @@ class GameCamera {
     this.zoom += (this.targetZoom - this.zoom) * (1 - Math.pow(1 - this.zoomLerp, dt * 60));
 
     // Clamp camera within soft arena bounds
-    this.x = Math.max(200, Math.min(1600, this.x));
+    const minCamX = isPortrait ? 350 : 200;
+    const maxCamX = isPortrait ? 1450 : 1600;
+    this.x = Math.max(minCamX, Math.min(maxCamX, this.x));
     this.y = Math.max(200, Math.min(820, this.y));
   }
 

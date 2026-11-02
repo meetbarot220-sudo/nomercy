@@ -54,6 +54,10 @@ class GameEngine {
     this.handleResize();
 
     window.addEventListener('resize', () => this.handleResize());
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', () => this.handleResize());
+      window.visualViewport.addEventListener('scroll', () => this.handleResize());
+    }
 
     // Start render/update loop
     this.loop = this.loop.bind(this);
@@ -130,9 +134,13 @@ class GameEngine {
 
   // --- RESIZE CANVAS & CAMERA ---
   handleResize() {
+    const vv = window.visualViewport;
+    const w = Math.round(vv ? vv.width : window.innerWidth);
+    const h = Math.round(vv ? vv.height : window.innerHeight);
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    const w = window.innerWidth;
-    const h = window.innerHeight;
+
+    document.documentElement.style.setProperty('--vh', `${h * 0.01}px`);
+    document.documentElement.style.setProperty('--vw', `${w * 0.01}px`);
 
     this.canvas.width = w * dpr;
     this.canvas.height = h * dpr;
@@ -258,9 +266,6 @@ class GameEngine {
     if (window.input && window.input.isTouchDevice) {
       const mobileControls = document.getElementById('mobile-controls');
       if (mobileControls) mobileControls.classList.remove('hidden');
-
-      const rotateNotice = document.getElementById('rotate-device-notice');
-      if (rotateNotice) rotateNotice.classList.remove('hidden');
     }
 
     // Reset systems
@@ -325,14 +330,10 @@ class GameEngine {
       window.input.reset();
     }
 
-    // Immediately hide and disable mobile touch controls and notices upon game over
+    // Immediately hide and disable mobile touch controls upon game over
     const mobileControls = document.getElementById('mobile-controls');
     if (mobileControls) {
       mobileControls.classList.add('hidden');
-    }
-    const rotateNotice = document.getElementById('rotate-device-notice');
-    if (rotateNotice) {
-      rotateNotice.classList.add('hidden');
     }
 
     const modal = document.getElementById('game-over-modal');
@@ -602,7 +603,16 @@ class GameEngine {
   }
 }
 
-// Launch Game on Window Load
-window.addEventListener('load', () => {
-  window.gameEngine = new GameEngine();
-});
+// Launch Game robustly
+function initGame() {
+  if (!window.gameEngine) {
+    window.gameEngine = new GameEngine();
+  }
+}
+
+if (document.readyState === 'loading') {
+  window.addEventListener('DOMContentLoaded', initGame);
+  window.addEventListener('load', initGame);
+} else {
+  initGame();
+}

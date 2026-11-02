@@ -26,7 +26,12 @@
 html, body {
   width: 100%;
   height: 100%;
+  height: 100dvh;
+  margin: 0;
+  padding: 0;
   overflow: hidden;
+  position: fixed;
+  inset: 0;
   background-color: var(--bg-dark);
   font-family: var(--font-main);
   color: #ffffff;
@@ -34,9 +39,12 @@ html, body {
 }
 
 #game-container {
-  position: relative;
-  width: 100vw;
-  height: 100vh;
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  height: 100dvh;
+  height: calc(var(--vh, 1vh) * 100);
   overflow: hidden;
   display: flex;
   justify-content: center;
@@ -264,58 +272,6 @@ html, body {
 
 .hud-btn:active {
   transform: scale(0.92);
-}
-
-/* ============================================================
-   PORTRAIT ORIENTATION BANNER (Friendly mobile helper)
-   ============================================================ */
-
-.rotate-notice {
-  position: absolute;
-  top: 72px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 90;
-  pointer-events: none;
-  display: none;
-}
-
-.rotate-notice-pill {
-  background: rgba(15, 23, 42, 0.94);
-  border: 1.5px solid rgba(255, 204, 0, 0.6);
-  border-radius: 30px;
-  padding: 8px 18px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: #ffde59;
-  font-size: 12px;
-  font-weight: 800;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
-  animation: rotatePillPulse 2.5s infinite ease-in-out;
-  white-space: nowrap;
-}
-
-.rotate-icon {
-  font-size: 16px;
-  animation: spinIcon 3s infinite linear;
-}
-
-@keyframes rotatePillPulse {
-  0%, 100% { transform: scale(1); opacity: 0.95; }
-  50% { transform: scale(1.03); opacity: 1; }
-}
-
-@keyframes spinIcon {
-  0% { transform: rotate(0deg); }
-  50% { transform: rotate(180deg); }
-  100% { transform: rotate(360deg); }
-}
-
-@media (orientation: portrait) and (max-width: 900px) {
-  body.has-touch .rotate-notice:not(.hidden) {
-    display: flex;
-  }
 }
 
 /* ============================================================
@@ -619,8 +575,15 @@ html, body {
    ============================================================ */
 
 .mobile-controls-layer {
-  position: absolute;
-  inset: 0;
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  height: 100dvh;
+  height: calc(var(--vh, 1vh) * 100);
   pointer-events: none;
   z-index: 1000;
   display: flex;
@@ -628,7 +591,7 @@ html, body {
   align-items: flex-end;
   padding-left: max(16px, env(safe-area-inset-left, 16px));
   padding-right: max(16px, env(safe-area-inset-right, 16px));
-  padding-bottom: max(14px, env(safe-area-inset-bottom, 14px));
+  padding-bottom: max(20px, calc(env(safe-area-inset-bottom, 0px) + 16px));
   padding-top: max(8px, env(safe-area-inset-top, 8px));
   box-sizing: border-box;
 }
@@ -644,6 +607,34 @@ html, body {
 body.game-over .mobile-controls-layer,
 .mobile-controls-layer.hidden {
   display: none !important;
+}
+
+/* Portrait specific overlay positioning and thumb ergonomics */
+@media (orientation: portrait) {
+  .mobile-controls-layer {
+    padding-bottom: max(32px, calc(env(safe-area-inset-bottom, 0px) + 26px));
+    padding-left: max(14px, env(safe-area-inset-left, 14px));
+    padding-right: max(14px, env(safe-area-inset-right, 14px));
+  }
+
+  .mobile-cluster-left {
+    gap: 12px;
+  }
+
+  .dpad-btn {
+    width: clamp(52px, 14vw, 64px);
+    height: clamp(52px, 14vw, 64px);
+    border-radius: 18px;
+  }
+
+  .mobile-cluster-right {
+    gap: 14px;
+  }
+
+  .action-circle {
+    width: clamp(58px, 15vw, 68px);
+    height: clamp(58px, 15vw, 68px);
+  }
 }
 
 .touch-btn {

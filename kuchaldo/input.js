@@ -35,12 +35,19 @@ class InputController {
   }
 
   detectTouchDevice() {
-    return (
+    const hasTouchApi = (
       'ontouchstart' in window ||
-      (typeof navigator !== 'undefined' && (navigator.maxTouchPoints > 0 || navigator.msMaxTouchPoints > 0)) ||
+      (typeof navigator !== 'undefined' && (navigator.maxTouchPoints > 0 || navigator.msMaxTouchPoints > 0))
+    );
+    const hasCoarsePointer = (
       (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) ||
       (window.matchMedia && window.matchMedia('(any-pointer: coarse)').matches)
     );
+    const isMobileAgent = (
+      typeof navigator !== 'undefined' &&
+      /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+    );
+    return hasTouchApi || hasCoarsePointer || isMobileAgent;
   }
 
   enableTouch() {
@@ -158,11 +165,13 @@ class InputController {
     const mobileContainer = document.getElementById('mobile-controls');
     if (!mobileContainer) return;
 
-    // Set initial visibility class based on detected touch status
-    if (!this.isTouchDevice) {
+    // Determine desktop vs mobile touch status
+    const isDesktopOnly = !this.isTouchDevice && window.matchMedia && window.matchMedia('(pointer: fine) and (hover: hover)').matches;
+
+    if (isDesktopOnly) {
       mobileContainer.classList.add('hidden');
     } else {
-      mobileContainer.classList.remove('hidden');
+      this.enableTouch();
     }
 
     // ALWAYS attach listeners to all touch buttons
