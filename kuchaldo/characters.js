@@ -114,12 +114,8 @@ class Fighter {
     this.attackDuration = 0.22;
     this.attackHitFighters = new Set();
 
-    // Dash
-    this.isDashing = false;
-    this.dashTimer = 0;
-    this.dashDuration = 0.20;
-    this.dashCooldown = 0;
-    this.dashSpeed = 780;
+    // 3-second Punch Power Block (when squished, cannot punch for 3s; character looks completely normal)
+    this.punchBlockTimer = 0;
 
     // Power-up Buff & Shield
     this.activeBuff = null;
@@ -153,8 +149,7 @@ class Fighter {
     this.invulnerableTimer = 1.0; // safe spawn shield
     this.attackCooldown = 0;
     this.isAttacking = false;
-    this.dashCooldown = 0;
-    this.isDashing = false;
+    this.punchBlockTimer = 0;
     this.activeBuff = null;
     this.hasShield = false;
     this.kills = 0;
@@ -240,29 +235,12 @@ class Fighter {
     }
   }
 
-  dash() {
-    if (this.dashCooldown > 0 || this.hitStunTimer > 0 || !this.isAlive) return;
-
-    this.isDashing = true;
-    this.dashTimer = this.dashDuration;
-    this.dashCooldown = this.activeBuff && this.activeBuff.id === 'SPEED_BOOTS' ? 0.45 : 0.85;
-    this.invulnerableTimer = this.dashDuration;
-
-    // Horizontal burst in facing direction
-    this.vx = this.facing * this.dashSpeed * (this.activeBuff && this.activeBuff.id === 'SPEED_BOOTS' ? 1.3 : 1.0);
-    this.vy = Math.min(this.vy, 0); // cancel downward fall briefly
-
-    // Horizontal stretch
-    this.scaleX = 1.45;
-    this.scaleY = 0.7;
-
-    window.soundEngine.playDash();
-    window.particles.spawnDust(this.x, this.y, 10, this.facing);
-    window.particles.spawnShockwave(this.x, this.y - this.radius, 35, '#00e5ff', 0.25);
-  }
+  // Dash removed as per specifications
+  dash() {}
 
   attack() {
-    if (this.attackCooldown > 0 || this.hitStunTimer > 0 || !this.isAlive) return;
+    // Punch blocked for 3s after being squished, or during cooldown/hitstun
+    if (this.punchBlockTimer > 0 || this.attackCooldown > 0 || this.hitStunTimer > 0 || !this.isAlive) return;
 
     this.isAttacking = true;
     this.attackTimer = this.attackDuration;
@@ -307,9 +285,26 @@ class Fighter {
     // Knockback scaling: like Smash Bros, knockback increases exponentially with damage %
     const knockbackMultiplier = 1 + (this.damagePercentage / 55);
     const hasTitanFist = attacker.activeBuff && attacker.activeBuff.id === 'TITAN_FIST';
-    const buffMultiplier = hasTitanFist ? 2.5 : 1.0;
 
-    const totalKnockback = (baseKnockback * knockbackMultiplier * buffMultiplier);
+    // Knockback power calculation:
+    // 1. PLAYER -> BOT: 40% Titan Fist power (1.60x) + 10% knockback bonus specifically against bots (1.10x) = 1.76x
+    // 2. BOT -> PLAYER / BOT: Normal/default knockback (1.0x). Fair, consistent combat without excessive launch!
+    let knockbackPower = 1.0;
+    if (!attacker.isBot) {
+      const titanFistBonus = hasTitanFist ? 2.5 : 1.60;
+      const botBonus = this.isBot ? 1.10 : 1.0;
+      knockbackPower = titanFistBonus * botBonus;
+    } else {
+      // Normal bot punch knockback
+      knockbackPower = hasTitanFist ? 2.5 : 1.0;
+    }
+
+    // SQUISH Punch Block: if attacker's punch power is blocked, zero knockback
+    if (attacker.punchBlockTimer > 0) {
+      knockbackPower = 0;
+    }
+
+    const totalKnockback = (baseKnockback * knockbackMultiplier * knockbackPower);
 
     this.vx = Math.cos(angle) * totalKnockback;
     this.vy = Math.sin(angle) * totalKnockback;
@@ -346,6 +341,9 @@ class Fighter {
   stomp(victim) {
     if (!this.isAlive || !victim.isAlive) return;
 
+    // SQUISH: Punching power blocked for exactly 3 seconds (can still move and jump normally, NO stun visuals)
+    victim.punchBlockTimer = 3.0;
+
     // Stomper bounces up high
     this.vy = -680;
     this.onGround = false;
@@ -353,13 +351,13 @@ class Fighter {
     this.scaleX = 0.7;
     this.scaleY = 1.4;
 
-    // Victim gets squashed downward
+    // Victim gets squashed downward briefly without movement lock
     victim.damagePercentage += 12;
     this.damageDealt += 12;
     victim.vy = 450;
     victim.scaleX = 1.5;
     victim.scaleY = 0.55;
-    victim.hitStunTimer = 0.25;
+    victim.hitStunTimer = 0; // No stun movement restriction! Can run and jump normally immediately!
 
     window.gameEngine.triggerHitStop(40);
     window.soundEngine.playStomp();
@@ -380,7 +378,7 @@ class Fighter {
     if (this.hitStunTimer > 0) this.hitStunTimer -= dt;
     if (this.invulnerableTimer > 0) this.invulnerableTimer -= dt;
     if (this.attackCooldown > 0) this.attackCooldown -= dt;
-    if (this.dashCooldown > 0) this.dashCooldown -= dt;
+    if (this.punchBlockTimer > 0) this.punchBlockTimer -= dt;
 
     if (this.dropDownTimer > 0) {
       this.dropDownTimer -= dt;
@@ -394,14 +392,6 @@ class Fighter {
       this.attackTimer -= dt;
       if (this.attackTimer <= 0) {
         this.isAttacking = false;
-      }
-    }
-
-    // Active Dash Timer
-    if (this.isDashing) {
-      this.dashTimer -= dt;
-      if (this.dashTimer <= 0) {
-        this.isDashing = false;
       }
     }
 
@@ -419,8 +409,12 @@ class Fighter {
       // Air drag
       this.vx *= Math.pow(0.985, dt * 60);
     } else {
-      // Carry momentum of moving platforms
-      if (this.currentPlatform && this.currentPlatform.style === 'moving') {
+      // If in hit stun on ground, smoothly slide with momentum
+      if (this.hitStunTimer > 0) {
+        this.vx *= Math.pow(0.92, dt * 60);
+      }
+      // Carry momentum of moving platforms & vertical lifts
+      if (this.currentPlatform && (this.currentPlatform.style === 'moving' || this.currentPlatform.style === 'lift')) {
         this.x += (this.currentPlatform.vx || 0) * dt;
         this.y += (this.currentPlatform.vy || 0) * dt;
       }
@@ -614,7 +608,7 @@ class Fighter {
     // Apply Squash & Stretch scaling
     ctx.scale(this.scaleX, this.scaleY);
 
-    // Invulnerability flashing (e.g. on respawn or dash)
+    // Invulnerability flashing (e.g. on respawn)
     if (this.invulnerableTimer > 0 && Math.floor(this.invulnerableTimer * 20) % 2 === 0) {
       ctx.globalAlpha = 0.55;
     }
@@ -653,10 +647,24 @@ class Fighter {
     ctx.arc(0, bodyCenterY, bodyRadius, 0, Math.PI * 2);
     ctx.fill();
 
-    // Subtle outline (gold outline for Player, specific dark outline for Bots)
-    ctx.strokeStyle = theme.outline;
-    ctx.lineWidth = theme.outlineWidth;
-    ctx.stroke();
+    // SQUISH VISUAL INDICATOR: Bold black outer line for 3 seconds (Only a visual indicator, NO stun)
+    if (this.punchBlockTimer > 0) {
+      const fadeProgress = Math.min(1, this.punchBlockTimer / 0.35);
+      ctx.strokeStyle = `rgba(0, 0, 0, ${fadeProgress})`;
+      ctx.lineWidth = 5.5; // Thick, clearly visible black outer border
+      ctx.stroke();
+
+      if (fadeProgress < 1) {
+        ctx.strokeStyle = theme.outline;
+        ctx.lineWidth = theme.outlineWidth * (1 - fadeProgress);
+        ctx.stroke();
+      }
+    } else {
+      // Normal cartoon character outline
+      ctx.strokeStyle = theme.outline;
+      ctx.lineWidth = theme.outlineWidth;
+      ctx.stroke();
+    }
 
     // 3. Cute Cartoon Eyes
     const eyeOffsetX = this.facing * 7;
@@ -726,8 +734,8 @@ class Fighter {
       });
     }
 
-    // 4. Distinctive Accessories (Keeps red fighters instantly recognizable!)
-    if (this.accessory === 'crown') {
+    // 4. Distinctive Accessories (Crown exclusively reserved for human Player)
+    if (!this.isBot && this.accessory === 'crown') {
       // PLAYER: Gleaming Golden Crown
       const crownY = bodyCenterY - bodyRadius + 4;
       ctx.fillStyle = '#ffcc00';
@@ -750,24 +758,6 @@ class Fighter {
       ctx.beginPath();
       ctx.arc(0, crownY - 4, 3, 0, Math.PI * 2);
       ctx.fill();
-
-    } else if (this.accessory === 'mohawk') {
-      // BOT 1 (Blaze): Fiery Punk Mohawk Spikes
-      const mohawkY = bodyCenterY - bodyRadius + 4;
-      ctx.fillStyle = '#ffdd00';
-      ctx.strokeStyle = '#ff5500';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(-12, mohawkY);
-      ctx.lineTo(-7, mohawkY - 15);
-      ctx.lineTo(-2, mohawkY - 8);
-      ctx.lineTo(3, mohawkY - 18);
-      ctx.lineTo(8, mohawkY - 8);
-      ctx.lineTo(13, mohawkY - 14);
-      ctx.lineTo(14, mohawkY);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
 
     } else if (this.accessory === 'horns') {
       // BOT 2 (Aegis): Viking Horns & Visor

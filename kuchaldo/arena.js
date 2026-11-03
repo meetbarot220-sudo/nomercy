@@ -1,7 +1,9 @@
 /* ============================================================
-   SQUISH BRAWL - ARENA & PLATFORMS SYSTEM (NATURAL GARDEN & FOREST)
-   Multi-level tactical arena with moving platforms, jump-throughs,
-   bouncy mushroom spring pads, and layered natural parallax scenery
+   SQUISH BRAWL - ARENA & PLATFORMS SYSTEM (CARTOON NATURE ENVIRONMENT)
+   Bright cheerful cartoon nature landscape inspired by vector platform art:
+   Layered blue sky with soft arched bands, giant billowy cartoon clouds,
+   soft rolling hills, stylized lollipop trees, grass tufts, and pebbles.
+   NO watermarks, NO text, NO logos.
    ============================================================ */
 
 class Arena {
@@ -17,71 +19,97 @@ class Arena {
       bottom: 1250
     };
 
-    // Platform definitions (Gameplay, collision & positions remain 100% LOCKED)
+    // Platform definitions
     // type: 'solid' (cannot pass through) or 'jumpthrough' (can jump up through, drop down with S)
     this.platforms = [
-      // 1. Central Main Stage (Wide fighting floor)
+      // 1. Central Main Stage (1st Platform - Wide fighting floor)
       { id: 'main', x: 550, y: 720, w: 700, h: 48, type: 'solid', style: 'main' },
 
-      // 2. High Ground Central Platform (Jumpthrough)
+      // 2. High Ground Central Platform (2nd Platform) - Holds Central Jump Pad!
       { id: 'high_center', x: 700, y: 520, w: 400, h: 22, type: 'jumpthrough', style: 'garden_wood' },
 
-      // 3. Highest Apex Perch (Tactical crown point)
-      { id: 'apex', x: 800, y: 340, w: 200, h: 18, type: 'jumpthrough', style: 'garden_wood' },
-
-      // 4. Left Mid Platform (Jumpthrough)
-      { id: 'mid_left', x: 260, y: 600, w: 230, h: 22, type: 'jumpthrough', style: 'garden_wood' },
-
-      // 5. Right Mid Platform (Jumpthrough)
-      { id: 'mid_right', x: 1310, y: 600, w: 230, h: 22, type: 'jumpthrough', style: 'garden_wood' },
-
-      // 6. Left Low Recovery Island (Solid narrow)
-      { id: 'low_left', x: 120, y: 820, w: 220, h: 36, type: 'solid', style: 'island' },
-
-      // 7. Right Low Recovery Island (Solid narrow)
-      { id: 'low_right', x: 1460, y: 820, w: 220, h: 36, type: 'solid', style: 'island' },
-
-      // 8. Moving Horizontal Platform (Patrols across left chasm)
+      // 3. Horizontal Sliding Platform - LEFT side of 1st Platform
       {
-        id: 'moving_horiz',
-        x: 350,
-        baseX: 350,
+        id: 'moving_left',
+        x: 410,
+        baseX: 410,
         y: 710,
-        w: 160,
+        w: 150,
         h: 22,
         type: 'jumpthrough',
         style: 'moving',
         moveType: 'horizontal',
-        range: 150,
-        speed: 1.2,
+        range: 110,
+        speed: 1.1,
         time: 0,
         vx: 0,
         vy: 0
       },
 
-      // 9. Moving Vertical Platform (Elevator on right side)
+      // 4. Horizontal Sliding Platform - RIGHT side of 1st Platform
       {
-        id: 'moving_vert',
-        x: 1280,
-        y: 690,
-        baseY: 690,
-        w: 160,
+        id: 'moving_right',
+        x: 1390,
+        baseX: 1390,
+        y: 710,
+        w: 150,
         h: 22,
         type: 'jumpthrough',
         style: 'moving',
-        moveType: 'vertical',
-        range: 120,
-        speed: 1.4,
+        moveType: 'horizontal',
+        range: 110,
+        speed: 1.1,
         time: Math.PI,
         vx: 0,
         vy: 0
-      }
+      },
+
+      // 5. Vertical Lift - Apex Connection (Connects floating 2nd platform 520 to Apex Upper Arena 340)
+      {
+        id: 'lift_apex',
+        x: 600,
+        y: 520,
+        w: 140,
+        h: 20,
+        type: 'jumpthrough',
+        style: 'lift',
+        moveType: 'lift',
+        yBottom: 520,
+        yTop: 340,
+        cycleTime: 6.5,
+        pauseTime: 1.0,
+        timer: 0.5,
+        vx: 0,
+        vy: 0
+      },
+
+      // 6. Highest Apex Perch (Upper Arena)
+      { id: 'apex', x: 800, y: 340, w: 200, h: 18, type: 'jumpthrough', style: 'garden_wood' },
+
+      // 7. Left Mid Platform
+      { id: 'mid_left', x: 230, y: 600, w: 220, h: 22, type: 'jumpthrough', style: 'garden_wood' },
+
+      // 8. Right Mid Platform
+      { id: 'mid_right', x: 1350, y: 600, w: 220, h: 22, type: 'jumpthrough', style: 'garden_wood' },
+
+      // 9. Left Low Recovery Island (Solid narrow)
+      { id: 'low_left', x: 120, y: 820, w: 220, h: 36, type: 'solid', style: 'island' },
+
+      // 10. Right Low Recovery Island (Solid narrow)
+      { id: 'low_right', x: 1460, y: 820, w: 220, h: 36, type: 'solid', style: 'island' }
     ];
 
-    // Jump / Spring Pads (Bounce players high into the air - exact same mechanics)
+    // Jump / Spring Pads:
+    // - Central Jump Pad directly on top of the floating 2nd Platform (high_center) to launch into upper arena!
+    // - Moves together with the floating 2nd platform.
+    // - Side recovery spring pads on low islands
     this.springPads = [
-      { id: 'spring_left', x: 180, y: 820 - 12, w: 50, h: 14, bounceVy: -1050, animTime: 0 },
-      { id: 'spring_right', x: 1570, y: 820 - 12, w: 50, h: 14, bounceVy: -1050, animTime: 0 }
+      // 2nd Platform Jump Pad (Directly on top of floating high_center platform, locked to it)
+      { id: 'spring_center', platId: 'high_center', relX: 0.5, w: 52, h: 14, bounceVy: -920, animTime: 0, x: 874, y: 508 },
+      // Left Recovery Jump Pad
+      { id: 'spring_left', platId: 'low_left', relX: 0.35, w: 50, h: 14, bounceVy: -1050, animTime: 0, x: 180, y: 808 },
+      // Right Recovery Jump Pad
+      { id: 'spring_right', platId: 'low_right', relX: 0.65, w: 50, h: 14, bounceVy: -1050, animTime: 0, x: 1570, y: 808 }
     ];
 
     // Power-up tactical spawn coordinates
@@ -95,63 +123,150 @@ class Arena {
     window.powerUpManager.setSpawnPoints(this.powerUpSpawns);
 
     // ============================================================
-    // NATURAL ENVIRONMENT PROCEDURAL DATA (Layered Parallax)
+    // CARTOON NATURE BACKGROUND PROCEDURAL DATA (Layered Parallax)
     // ============================================================
     this.time = 0;
 
-    // 1. Drifting Soft Clouds (Layer 1)
+    // 1. Giant Soft Billowy Cartoon Clouds (Layer 1 - Reference inspired)
     this.clouds = [
-      { x: -150, y: -40,  scale: 1.15, speed: 7 },
-      { x: 340,  y: 35,   scale: 0.9,  speed: 11 },
-      { x: 820,  y: -65,  scale: 1.3,  speed: 6 },
-      { x: 1350, y: 10,   scale: 1.05, speed: 9 },
-      { x: 1840, y: -30,  scale: 1.1,  speed: 8 },
-      { x: 2320, y: 40,   scale: 1.2,  speed: 10 }
+      {
+        x: -220,
+        y: 120,
+        scale: 1.2,
+        speed: 6,
+        puffs: [
+          { ox: 0, oy: 0, r: 75 },
+          { ox: 65, oy: -35, r: 95 },
+          { ox: 145, oy: -20, r: 80 },
+          { ox: 215, oy: 15, r: 65 },
+          { ox: -65, oy: 25, r: 55 }
+        ]
+      },
+      {
+        x: 380,
+        y: 80,
+        scale: 1.35,
+        speed: 8,
+        puffs: [
+          { ox: 0, oy: 10, r: 85 },
+          { ox: 80, oy: -40, r: 110 },
+          { ox: 175, oy: -25, r: 90 },
+          { ox: 255, oy: 15, r: 70 },
+          { ox: -75, oy: 30, r: 60 }
+        ]
+      },
+      {
+        x: 1050,
+        y: 140,
+        scale: 1.15,
+        speed: 5.5,
+        puffs: [
+          { ox: 0, oy: 0, r: 70 },
+          { ox: 60, oy: -30, r: 90 },
+          { ox: 135, oy: -15, r: 75 },
+          { ox: 195, oy: 20, r: 60 }
+        ]
+      },
+      {
+        x: 1650,
+        y: 90,
+        scale: 1.3,
+        speed: 7.5,
+        puffs: [
+          { ox: 0, oy: 10, r: 80 },
+          { ox: 75, oy: -45, r: 105 },
+          { ox: 165, oy: -20, r: 85 },
+          { ox: 240, oy: 20, r: 65 },
+          { ox: -70, oy: 25, r: 55 }
+        ]
+      },
+      {
+        x: 2300,
+        y: 130,
+        scale: 1.2,
+        speed: 7,
+        puffs: [
+          { ox: 0, oy: 0, r: 75 },
+          { ox: 70, oy: -35, r: 95 },
+          { ox: 150, oy: -15, r: 80 }
+        ]
+      }
     ];
 
-    // 2. Far Mountain Peaks (Layer 2)
-    this.mountainPeaksFar = [
-      { x: -500, h: 480 }, { x: -200, h: 540 }, { x: 100, h: 450 },
-      { x: 420, h: 620 },  { x: 740, h: 510 },  { x: 1050, h: 590 },
-      { x: 1380, h: 530 }, { x: 1680, h: 640 }, { x: 1980, h: 500 },
-      { x: 2320, h: 560 }, { x: 2650, h: 490 }
+    // 2. Distant Soft Blue / Periwinkle Cartoon Mountains (Layer 2)
+    this.distantMountains = [
+      { x: -500, w: 600, h: 320, cx: -200, cy: 500 },
+      { x: -50,  w: 700, h: 380, cx: 300,  cy: 480 },
+      { x: 500,  w: 750, h: 350, cx: 875,  cy: 490 },
+      { x: 1100, w: 700, h: 400, cx: 1450, cy: 470 },
+      { x: 1650, w: 650, h: 330, cx: 1975, cy: 510 },
+      { x: 2150, w: 650, h: 360, cx: 2475, cy: 490 }
     ];
 
-    this.mountainPeaksMid = [
-      { x: -400, h: 360 }, { x: -80, h: 420 },  { x: 240, h: 380 },
-      { x: 580, h: 470 },  { x: 920, h: 410 },  { x: 1220, h: 450 },
-      { x: 1540, h: 390 }, { x: 1840, h: 460 }, { x: 2150, h: 370 },
-      { x: 2500, h: 430 }
+    // 3. Mid-Distance Rolling Pastel Hills (Layer 3)
+    this.midHills = [
+      { cx: -300, cy: 560, rx: 500, ry: 210, color: '#78c6a3' },
+      { cx: 240,  cy: 530, rx: 540, ry: 230, color: '#68b993' },
+      { cx: 820,  cy: 570, rx: 580, ry: 240, color: '#74c49f' },
+      { cx: 1380, cy: 535, rx: 520, ry: 220, color: '#65b790' },
+      { cx: 1920, cy: 565, rx: 560, ry: 230, color: '#71c09b' },
+      { cx: 2480, cy: 540, rx: 500, ry: 210, color: '#68b993' }
     ];
 
-    // 3. Mid-Distance Forest Hills & Canopy Crests (Layer 3)
-    this.forestHills = [
-      { cx: -200, cy: 520, rx: 420, ry: 200, color: '#276846' },
-      { cx: 300,  cy: 500, rx: 480, ry: 220, color: '#2f7c55' },
-      { cx: 850,  cy: 530, rx: 520, ry: 230, color: '#276846' },
-      { cx: 1400, cy: 490, rx: 460, ry: 210, color: '#33885d' },
-      { cx: 1950, cy: 520, rx: 490, ry: 220, color: '#2a724d' },
-      { cx: 2500, cy: 510, rx: 440, ry: 200, color: '#2f7c55' }
+    // 4. Nearer Cartoon Rolling Hills (Layer 4)
+    this.foreHills = [
+      { cx: -180, cy: 670, rx: 460, ry: 210, color: '#42b678' },
+      { cx: 360,  cy: 640, rx: 520, ry: 220, color: '#38a96d' },
+      { cx: 940,  cy: 680, rx: 550, ry: 230, color: '#46bd7d' },
+      { cx: 1520, cy: 645, rx: 500, ry: 220, color: '#3cae72' },
+      { cx: 2080, cy: 675, rx: 520, ry: 225, color: '#44ba7a' }
     ];
 
-    // 4. Distant Trees & Woodland Groves (Layer 4)
-    this.backgroundTrees = [
-      { x: -120, y: 460, type: 'oak',   h: 170, w: 120, shade: '#38a169' },
-      { x: 60,   y: 440, type: 'pine',  h: 210, w: 90,  shade: '#276749' },
-      { x: 220,  y: 470, type: 'bush',  h: 90,  w: 130, shade: '#48bb78' },
-      { x: 420,  y: 420, type: 'oak',   h: 190, w: 140, shade: '#2f855a' },
-      { x: 580,  y: 450, type: 'pine',  h: 230, w: 95,  shade: '#22543d' },
-      { x: 740,  y: 430, type: 'birch', h: 180, w: 110, shade: '#48bb78' },
-      { x: 920,  y: 460, type: 'oak',   h: 175, w: 135, shade: '#38a169' },
-      { x: 1080, y: 435, type: 'pine',  h: 220, w: 90,  shade: '#276749' },
-      { x: 1240, y: 450, type: 'oak',   h: 185, w: 130, shade: '#2f855a' },
-      { x: 1420, y: 425, type: 'birch', h: 190, w: 115, shade: '#48bb78' },
-      { x: 1580, y: 460, type: 'pine',  h: 215, w: 95,  shade: '#22543d' },
-      { x: 1760, y: 440, type: 'oak',   h: 170, w: 125, shade: '#38a169' },
-      { x: 1940, y: 465, type: 'pine',  h: 200, w: 85,  shade: '#276749' }
+    // 5. Stylized Cartoon Lollipop / Button Trees (Matching Reference Image)
+    this.cartoonTrees = [
+      { x: -140, y: 440, trunkH: 28, r: 24, trunkColor: '#8a6442', leafColor: '#93d2b2', highColor: '#bcead3' },
+      { x: 30,   y: 410, trunkH: 34, r: 28, trunkColor: '#7b5736', leafColor: '#82c9a6', highColor: '#b2e4cb' },
+      { x: 190,  y: 435, trunkH: 26, r: 22, trunkColor: '#8a6442', leafColor: '#97d6b7', highColor: '#c1ecda' },
+      { x: 420,  y: 395, trunkH: 38, r: 32, trunkColor: '#7b5736', leafColor: '#7ec6a1', highColor: '#ade2c7' },
+      { x: 610,  y: 430, trunkH: 25, r: 23, trunkColor: '#8a6442', leafColor: '#8fcfae', highColor: '#bce8d2' },
+      { x: 780,  y: 415, trunkH: 32, r: 27, trunkColor: '#7b5736', leafColor: '#84caa8', highColor: '#b4e5cd' },
+      { x: 960,  y: 445, trunkH: 28, r: 25, trunkColor: '#8a6442', leafColor: '#93d2b2', highColor: '#bcead3' },
+      { x: 1140, y: 410, trunkH: 36, r: 30, trunkColor: '#7b5736', leafColor: '#7ec6a1', highColor: '#ade2c7' },
+      { x: 1320, y: 425, trunkH: 26, r: 24, trunkColor: '#8a6442', leafColor: '#8acfa9', highColor: '#b9e7cf' },
+      { x: 1510, y: 395, trunkH: 38, r: 31, trunkColor: '#7b5736', leafColor: '#81c8a5', highColor: '#b0e3c9' },
+      { x: 1710, y: 435, trunkH: 26, r: 23, trunkColor: '#8a6442', leafColor: '#92d1b1', highColor: '#bce9d2' },
+      { x: 1910, y: 415, trunkH: 34, r: 29, trunkColor: '#7b5736', leafColor: '#7ec6a1', highColor: '#ade2c7' }
     ];
 
-    // 5. Subtle Wildflowers along platform surfaces (Precomputed for stability)
+    // 6. Cartoon Grass Tufts & Pebble Dots on Hill Slopes
+    this.grassTufts = [
+      { x: -90, y: 480, h: 14, color: '#2f8f5c' },
+      { x: 110, y: 450, h: 16, color: '#2b8454' },
+      { x: 280, y: 470, h: 15, color: '#2f8f5c' },
+      { x: 520, y: 440, h: 17, color: '#277a4e' },
+      { x: 710, y: 475, h: 14, color: '#2f8f5c' },
+      { x: 880, y: 460, h: 16, color: '#2b8454' },
+      { x: 1040, y: 480, h: 15, color: '#2f8f5c' },
+      { x: 1250, y: 445, h: 18, color: '#277a4e' },
+      { x: 1430, y: 465, h: 15, color: '#2b8454' },
+      { x: 1630, y: 450, h: 16, color: '#2f8f5c' },
+      { x: 1820, y: 470, h: 14, color: '#2b8454' }
+    ];
+
+    this.pebbles = [
+      { x: -50, y: 520, r: 5.5, color: 'rgba(40, 95, 65, 0.22)' },
+      { x: -38, y: 526, r: 3.5, color: 'rgba(40, 95, 65, 0.22)' },
+      { x: 340, y: 490, r: 6.0, color: 'rgba(40, 95, 65, 0.22)' },
+      { x: 352, y: 497, r: 4.0, color: 'rgba(40, 95, 65, 0.22)' },
+      { x: 740, y: 510, r: 5.0, color: 'rgba(40, 95, 65, 0.22)' },
+      { x: 750, y: 516, r: 3.5, color: 'rgba(40, 95, 65, 0.22)' },
+      { x: 1180, y: 495, r: 6.0, color: 'rgba(40, 95, 65, 0.22)' },
+      { x: 1194, y: 502, r: 4.0, color: 'rgba(40, 95, 65, 0.22)' },
+      { x: 1560, y: 505, r: 5.5, color: 'rgba(40, 95, 65, 0.22)' },
+      { x: 1572, y: 512, r: 3.5, color: 'rgba(40, 95, 65, 0.22)' }
+    ];
+
+    // 7. Subtle Wildflowers along platform surfaces
     this.flowers = [
       { platId: 'main', relX: 30,  color: '#facc15', size: 4.5 },
       { platId: 'main', relX: 85,  color: '#f472b6', size: 4 },
@@ -175,7 +290,7 @@ class Arena {
       { platId: 'low_right',   relX: 180, color: '#38bdf8', size: 4.5 }
     ];
 
-    // 6. Hanging Ivy Vines underneath platforms
+    // 8. Hanging Ivy Vines underneath platforms
     this.hangingVines = [
       { platId: 'main', relX: 65,  len: 75, seed: 1.2 },
       { platId: 'main', relX: 150, len: 110, seed: 2.7 },
@@ -189,20 +304,20 @@ class Arena {
       { platId: 'low_right', relX: 160, len: 65, seed: 3.1 }
     ];
 
-    // 7. Ambient Drifting Leaves & Golden Sun Spores (Layer 5)
+    // 9. Ambient Drifting Leaves & Dandelion Fluff (Gentle breeze)
     this.ambientLeaves = [];
-    for (let i = 0; i < 32; i++) {
+    for (let i = 0; i < 28; i++) {
       this.ambientLeaves.push({
         x: Math.random() * 2400 - 300,
         y: Math.random() * 1200 - 200,
-        vx: 14 + Math.random() * 24,
-        vy: 16 + Math.random() * 20,
-        size: 3.5 + Math.random() * 4.5,
+        vx: 15 + Math.random() * 22,
+        vy: 16 + Math.random() * 18,
+        size: 3.5 + Math.random() * 4,
         angle: Math.random() * Math.PI * 2,
-        rotSpeed: (Math.random() - 0.5) * 2.8,
-        wobbleSpeed: 1.2 + Math.random() * 2.2,
+        rotSpeed: (Math.random() - 0.5) * 2.5,
+        wobbleSpeed: 1.2 + Math.random() * 2.0,
         seed: Math.random() * Math.PI * 2,
-        type: i % 4 === 0 ? 'pink_petal' : (i % 3 === 0 ? 'gold_spore' : 'green_leaf')
+        type: i % 4 === 0 ? 'pink_petal' : (i % 3 === 0 ? 'dandelion_fluff' : 'green_leaf')
       });
     }
   }
@@ -211,40 +326,66 @@ class Arena {
   update(dt) {
     this.time += dt;
 
-    // 1. Update moving platforms (Exact same physics)
+    // 1. Update horizontal moving platforms & vertical lifts
     for (const plat of this.platforms) {
-      if (plat.style === 'moving') {
+      if (plat.style === 'moving' && plat.moveType === 'horizontal') {
         plat.time += dt * plat.speed;
-        if (plat.moveType === 'horizontal') {
-          const prevX = plat.x;
-          plat.x = plat.baseX + Math.sin(plat.time) * plat.range;
-          plat.vx = (plat.x - prevX) / dt;
-          plat.vy = 0;
-        } else if (plat.moveType === 'vertical') {
-          const prevY = plat.y;
-          plat.y = plat.baseY + Math.sin(plat.time) * plat.range;
-          plat.vx = 0;
-          plat.vy = (plat.y - prevY) / dt;
+        const prevX = plat.x;
+        plat.x = plat.baseX + Math.sin(plat.time) * plat.range;
+        plat.vx = (plat.x - prevX) / dt;
+        plat.vy = 0;
+      } else if (plat.style === 'lift' || plat.moveType === 'lift') {
+        plat.timer = (plat.timer + dt) % plat.cycleTime;
+        const halfCycle = plat.cycleTime / 2;
+        const travelDuration = halfCycle - plat.pauseTime;
+        const prevY = plat.y;
+
+        if (plat.timer < travelDuration) {
+          // Smooth upward travel with cosine ease-in-out
+          const progress = plat.timer / travelDuration;
+          const ease = (1 - Math.cos(progress * Math.PI)) / 2;
+          plat.y = plat.yBottom - (plat.yBottom - plat.yTop) * ease;
+        } else if (plat.timer < halfCycle) {
+          // Pause at upper level
+          plat.y = plat.yTop;
+        } else if (plat.timer < halfCycle + travelDuration) {
+          // Smooth downward travel with cosine ease-in-out
+          const progress = (plat.timer - halfCycle) / travelDuration;
+          const ease = (1 - Math.cos(progress * Math.PI)) / 2;
+          plat.y = plat.yTop + (plat.yBottom - plat.yTop) * ease;
+        } else {
+          // Pause at lower level
+          plat.y = plat.yBottom;
         }
+
+        plat.vx = 0;
+        plat.vy = (plat.y - prevY) / dt;
       }
     }
 
-    // 2. Update spring pad bounce compression
+    // 2. Keep spring pads firmly attached directly to their platforms (moves together if platform moves)
     for (const pad of this.springPads) {
+      if (pad.platId) {
+        const plat = this.platforms.find(p => p.id === pad.platId);
+        if (plat) {
+          pad.x = plat.x + (plat.w - pad.w) * pad.relX;
+          pad.y = plat.y - pad.h + 2;
+        }
+      }
       if (pad.animTime > 0) {
         pad.animTime -= dt * 6;
       }
     }
 
-    // 3. Update drifting sky clouds
+    // 3. Update drifting sky clouds (Wrap smoothly across screen)
     for (const c of this.clouds) {
       c.x += c.speed * dt;
       if (c.x > 2600) {
-        c.x = -600;
+        c.x = -650;
       }
     }
 
-    // 4. Update fluttering ambient leaves and petals
+    // 4. Update fluttering ambient leaves and fluff
     for (const leaf of this.ambientLeaves) {
       leaf.x += (leaf.vx + Math.sin(this.time * leaf.wobbleSpeed + leaf.seed) * 14) * dt;
       leaf.y += leaf.vy * dt;
@@ -288,7 +429,8 @@ class Arena {
   }
 
   // ============================================================
-  // RENDER NATURAL OUTDOOR ENVIRONMENT (Layered Parallax)
+  // RENDER NATURAL OUTDOOR ENVIRONMENT (Pure Visual Background)
+  // Inspired by cartoon vector nature art: Clean, colorful & bright
   // ============================================================
   renderBackground(ctx) {
     ctx.save();
@@ -297,137 +439,141 @@ class Arena {
     const camX = cam ? cam.x : 900;
     const camY = cam ? cam.y : 600;
 
-    // Helper to calculate parallax world coordinate
-    // k = 0 (fixed to screen), k = 1.0 (moves with world)
+    // Helper to calculate parallax coordinate
+    // k = 0 (fixed to screen), k = 1.0 (moves 1:1 with world platforms)
     const px = (worldX, k) => 900 + (worldX - 900) + (camX - 900) * (1 - k);
     const py = (worldY, k) => 600 + (worldY - 600) + (camY - 600) * (1 - k);
 
     // ------------------------------------------------------------
-    // 1. SKY & WARM SUN (Parallax k = 0.02)
+    // 1. BRIGHT BLUE SKY & ARCHED SKY BANDS (Parallax k = 0.02)
     // ------------------------------------------------------------
     const skyLeft = px(-1400, 0.02);
     const skyTop = py(-1000, 0.02);
     const skyWidth = 4600;
     const skyHeight = 2600;
 
+    // Rich bright cartoon sky gradient
     const skyGrad = ctx.createLinearGradient(0, skyTop, 0, skyTop + skyHeight * 0.75);
-    skyGrad.addColorStop(0.0, '#3888df'); // Fresh rich blue zenith
-    skyGrad.addColorStop(0.35, '#60a5fa'); // Clear morning cerulean
-    skyGrad.addColorStop(0.65, '#93c5fd'); // Soft sky blue
-    skyGrad.addColorStop(0.85, '#bfdbfe'); // Horizon azure
-    skyGrad.addColorStop(1.0, '#dbeafe'); // Gentle warm ground haze
+    skyGrad.addColorStop(0.0, '#3fa7f5'); // Clean azure blue
+    skyGrad.addColorStop(0.35, '#56b4f8'); // Cheerful light cerulean
+    skyGrad.addColorStop(0.65, '#84cbfb'); // Soft sky blue
+    skyGrad.addColorStop(0.85, '#b8e3fd'); // Light horizon blue
+    skyGrad.addColorStop(1.0, '#d9f0fe'); // Horizon glow
 
     ctx.fillStyle = skyGrad;
     ctx.fillRect(skyLeft, skyTop, skyWidth, skyHeight);
 
-    // Sun with warm layered radial glow
-    const sunX = px(1360, 0.03);
-    const sunY = py(20, 0.03);
-
-    const sunCorona = ctx.createRadialGradient(sunX, sunY, 15, sunX, sunY, 320);
-    sunCorona.addColorStop(0.0, 'rgba(255, 255, 245, 0.95)');
-    sunCorona.addColorStop(0.18, 'rgba(254, 240, 138, 0.6)');
-    sunCorona.addColorStop(0.45, 'rgba(253, 224, 71, 0.22)');
-    sunCorona.addColorStop(1.0, 'rgba(253, 224, 71, 0.0)');
-
-    ctx.fillStyle = sunCorona;
+    // Subtle curved cartoon sky bands (Inspired by reference image)
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.12)';
     ctx.beginPath();
-    ctx.arc(sunX, sunY, 320, 0, Math.PI * 2);
+    ctx.ellipse(px(900, 0.02), py(-150, 0.02), 2200, 520, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Gentle natural god rays angling through sky
-    ctx.save();
-    ctx.translate(sunX, sunY);
-    ctx.rotate(0.36);
-    for (let r = -2; r <= 2; r++) {
-      ctx.fillStyle = 'rgba(255, 255, 230, 0.035)';
-      ctx.beginPath();
-      ctx.moveTo(-15 + r * 50, 0);
-      ctx.lineTo(-120 + r * 140, 1800);
-      ctx.lineTo(40 + r * 140, 1800);
-      ctx.lineTo(15 + r * 50, 0);
-      ctx.closePath();
-      ctx.fill();
-    }
-    ctx.restore();
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+    ctx.beginPath();
+    ctx.ellipse(px(900, 0.02), py(-50, 0.02), 2400, 480, 0, 0, Math.PI * 2);
+    ctx.fill();
 
     // ------------------------------------------------------------
-    // 2. SOFT DRIFTING CLOUDS (Parallax k = 0.06)
+    // 2. GIANT SOFT BILLOWY CARTOON CLOUDS (Parallax k = 0.06)
     // ------------------------------------------------------------
     for (const c of this.clouds) {
       const cx = px(c.x, 0.06);
       const cy = py(c.y, 0.06);
-      this.drawCloud(ctx, cx, cy, c.scale);
+      this.drawCartoonCloud(ctx, cx, cy, c.scale, c.puffs);
     }
 
     // ------------------------------------------------------------
-    // 3. DISTANT MISTY MOUNTAINS (Parallax k = 0.12)
+    // 3. DISTANT CARTOON MOUNTAINS / BLUE-PERIWINKLE RIDGES (Parallax k = 0.12)
     // ------------------------------------------------------------
-    // Far mountain ridge
-    ctx.fillStyle = '#64748b'; // Soft slate-lavender
-    ctx.beginPath();
-    ctx.moveTo(px(-800, 0.12), py(720, 0.12));
-    for (const p of this.mountainPeaksFar) {
-      const mx = px(p.x, 0.12);
-      const my = py(720 - p.h, 0.12);
-      ctx.lineTo(mx, my);
-    }
-    ctx.lineTo(px(2900, 0.12), py(720, 0.12));
-    ctx.closePath();
-    ctx.fill();
+    for (const m of this.distantMountains) {
+      const mx = px(m.cx, 0.12);
+      const my = py(m.cy, 0.12);
 
-    // Mid mountain ridge with depth shading
-    const mtnGrad = ctx.createLinearGradient(0, py(280, 0.16), 0, py(760, 0.16));
-    mtnGrad.addColorStop(0.0, '#475569');
-    mtnGrad.addColorStop(0.7, '#64748b');
-    mtnGrad.addColorStop(1.0, '#94a3b8');
+      const mtnGrad = ctx.createLinearGradient(0, my - m.h * 0.4, 0, my + m.h * 0.6);
+      mtnGrad.addColorStop(0.0, '#b8d8f0'); // Soft light periwinkle
+      mtnGrad.addColorStop(0.6, '#9cc3e3');
+      mtnGrad.addColorStop(1.0, '#86b0d4');
 
-    ctx.fillStyle = mtnGrad;
-    ctx.beginPath();
-    ctx.moveTo(px(-600, 0.16), py(760, 0.16));
-    for (const p of this.mountainPeaksMid) {
-      const mx = px(p.x, 0.16);
-      const my = py(760 - p.h, 0.16);
-      ctx.lineTo(mx, my);
-    }
-    ctx.lineTo(px(2700, 0.16), py(760, 0.16));
-    ctx.closePath();
-    ctx.fill();
-
-    // ------------------------------------------------------------
-    // 4. ROLLING GREEN FOREST HILLS (Parallax k = 0.26)
-    // ------------------------------------------------------------
-    // Deep forest valley floor beneath the rolling hills
-    const valleyGrad = ctx.createLinearGradient(0, py(620, 0.26), 0, py(1400, 0.26));
-    valleyGrad.addColorStop(0.0, '#276846');
-    valleyGrad.addColorStop(0.35, '#1b4d33');
-    valleyGrad.addColorStop(0.75, '#133925');
-    valleyGrad.addColorStop(1.0, '#0a1f14');
-    ctx.fillStyle = valleyGrad;
-    ctx.fillRect(px(-1200, 0.26), py(640, 0.26), 4400, 960);
-
-    for (const hill of this.forestHills) {
-      const hx = px(hill.cx, 0.26);
-      const hy = py(hill.cy, 0.26);
-
-      const hillGrad = ctx.createRadialGradient(hx, hy - 40, hill.ry * 0.3, hx, hy + 80, hill.ry * 1.2);
-      hillGrad.addColorStop(0.0, '#38a169'); // Sunlit emerald hill crest
-      hillGrad.addColorStop(0.7, hill.color);
-      hillGrad.addColorStop(1.0, '#1c4532');
-
-      ctx.fillStyle = hillGrad;
+      ctx.fillStyle = mtnGrad;
       ctx.beginPath();
-      ctx.ellipse(hx, hy + 180, hill.rx, hill.ry, 0, 0, Math.PI * 2);
+      ctx.ellipse(mx, my + 60, m.w * 0.5, m.h * 0.5, 0, 0, Math.PI * 2);
       ctx.fill();
     }
 
     // ------------------------------------------------------------
-    // 5. MIDGROUND TREES & NATURAL VEGETATION (Parallax k = 0.52)
+    // 4. MID-DISTANCE ROLLING CARTOON HILLS (Parallax k = 0.22)
     // ------------------------------------------------------------
-    for (const t of this.backgroundTrees) {
-      const tx = px(t.x, 0.52);
-      const ty = py(t.y, 0.52);
-      this.drawTree(ctx, tx, ty, t.type, t.h, t.w, t.shade);
+    // Solid valley ground beneath hills so no gaps appear
+    const valleyMid = ctx.createLinearGradient(0, py(560, 0.22), 0, py(1400, 0.22));
+    valleyMid.addColorStop(0.0, '#68b993');
+    valleyMid.addColorStop(0.5, '#4e9976');
+    valleyMid.addColorStop(1.0, '#367256');
+    ctx.fillStyle = valleyMid;
+    ctx.fillRect(px(-1200, 0.22), py(620, 0.22), 4400, 950);
+
+    for (const hill of this.midHills) {
+      const hx = px(hill.cx, 0.22);
+      const hy = py(hill.cy, 0.22);
+
+      const hillGrad = ctx.createRadialGradient(hx, hy - 40, hill.ry * 0.25, hx, hy + 60, hill.ry * 1.1);
+      hillGrad.addColorStop(0.0, '#8ad4b2'); // Soft pastel sunlit crest
+      hillGrad.addColorStop(0.6, hill.color);
+      hillGrad.addColorStop(1.0, '#4e9875');
+
+      ctx.fillStyle = hillGrad;
+      ctx.beginPath();
+      ctx.ellipse(hx, hy + 120, hill.rx, hill.ry, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Small stylized cartoon lollipop trees on mid-hill crests (Reference inspired)
+    for (const tree of this.cartoonTrees) {
+      const tx = px(tree.x, 0.22);
+      const ty = py(tree.y, 0.22);
+      this.drawLollipopTree(ctx, tx, ty, tree.trunkH, tree.r, tree.trunkColor, tree.leafColor, tree.highColor);
+    }
+
+    // ------------------------------------------------------------
+    // 5. NEARER CARTOON ROLLING HILLS (Parallax k = 0.38)
+    // ------------------------------------------------------------
+    const valleyFore = ctx.createLinearGradient(0, py(650, 0.38), 0, py(1450, 0.38));
+    valleyFore.addColorStop(0.0, '#38a96d');
+    valleyFore.addColorStop(0.4, '#2d8b58');
+    valleyFore.addColorStop(1.0, '#1d603c');
+    ctx.fillStyle = valleyFore;
+    ctx.fillRect(px(-1200, 0.38), py(700, 0.38), 4400, 950);
+
+    for (const hill of this.foreHills) {
+      const hx = px(hill.cx, 0.38);
+      const hy = py(hill.cy, 0.38);
+
+      const hillGrad = ctx.createRadialGradient(hx, hy - 30, hill.ry * 0.25, hx, hy + 50, hill.ry * 1.15);
+      hillGrad.addColorStop(0.0, '#59cb8f'); // Fresh green crest
+      hillGrad.addColorStop(0.6, hill.color);
+      hillGrad.addColorStop(1.0, '#27794e');
+
+      ctx.fillStyle = hillGrad;
+      ctx.beginPath();
+      ctx.ellipse(hx, hy + 120, hill.rx, hill.ry, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Stylized cartoon 3-blade grass tufts on hill slopes (Reference inspired)
+    for (const g of this.grassTufts) {
+      const gx = px(g.x, 0.38);
+      const gy = py(g.y, 0.38);
+      this.drawGrassTuft(ctx, gx, gy, g.h, g.color);
+    }
+
+    // Smooth cartoon pebble clusters on hill slopes (Reference inspired)
+    for (const p of this.pebbles) {
+      const pX = px(p.x, 0.38);
+      const pY = py(p.y, 0.38);
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.ellipse(pX, pY, p.r * 1.3, p.r * 0.75, -0.2, 0, Math.PI * 2);
+      ctx.fill();
     }
 
     // ------------------------------------------------------------
@@ -435,13 +581,12 @@ class Arena {
     // ------------------------------------------------------------
     for (const plat of this.platforms) {
       if (plat.style === 'main' || plat.style === 'island') {
-        // Massive weathered stone foundations descending into the misty valley
+        // Weathered stone foundations descending into valley
         const fX = plat.x + 35;
         const fY = plat.y + plat.h;
         const fW = plat.w - 70;
         const fH = 340;
 
-        // Earthen stone block gradient
         const pillarGrad = ctx.createLinearGradient(fX, fY, fX + fW, fY + fH);
         pillarGrad.addColorStop(0.0, '#1e293b');
         pillarGrad.addColorStop(0.6, '#0f172a');
@@ -452,7 +597,7 @@ class Arena {
         ctx.roundRect(fX, fY, fW, fH, [0, 0, 16, 16]);
         ctx.fill();
 
-        // Weathered stone brick lines
+        // Weathered stone masonry lines
         ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
         ctx.lineWidth = 1.5;
         for (let row = fY + 28; row < fY + fH; row += 36) {
@@ -470,7 +615,7 @@ class Arena {
         ctx.fill();
 
       } else if (plat.style === 'moving') {
-        // Enchanted forest motes below moving platforms (replaces harsh tech jets)
+        // Enchanted forest motes below moving platforms
         const pulse = Math.sin(this.time * 6) * 4;
         const moteCount = 5;
         for (let i = 0; i < moteCount; i++) {
@@ -519,7 +664,7 @@ class Arena {
     }
 
     // ------------------------------------------------------------
-    // 7. AMBIENT FLUTTERING LEAVES & GOLDEN SPORES (Layer 5)
+    // 7. AMBIENT FLUTTERING LEAVES & DANDELION FLUFF (Layer 5)
     // ------------------------------------------------------------
     for (const leaf of this.ambientLeaves) {
       ctx.save();
@@ -537,8 +682,8 @@ class Arena {
         ctx.ellipse(0, 0, leaf.size * 1.2, leaf.size * 0.8, 0, 0, Math.PI * 2);
         ctx.fill();
       } else {
-        // Golden sun spore / pollen mote
-        ctx.fillStyle = 'rgba(250, 204, 21, 0.75)';
+        // Soft white dandelion fluff
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.82)';
         ctx.beginPath();
         ctx.arc(0, 0, leaf.size * 0.6, 0, Math.PI * 2);
         ctx.fill();
@@ -549,84 +694,87 @@ class Arena {
     ctx.restore();
   }
 
-  // Draw natural puffy cloud
-  drawCloud(ctx, x, y, scale = 1.0) {
+  // Draw giant billowy cartoon cloud (Inspired by reference image)
+  drawCartoonCloud(ctx, x, y, scale = 1.0, puffs = []) {
     ctx.save();
     ctx.translate(x, y);
     ctx.scale(scale, scale);
 
-    // Soft cloud shadow underside
-    ctx.fillStyle = 'rgba(224, 242, 254, 0.82)';
+    // 1. Soft blue/periwinkle shaded underside
+    ctx.fillStyle = '#d8ebfb';
+    for (const p of puffs) {
+      ctx.beginPath();
+      ctx.arc(p.ox, p.oy + 14, p.r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // 2. Pure bright white top puff bodies
+    ctx.fillStyle = '#ffffff';
+    for (const p of puffs) {
+      ctx.beginPath();
+      ctx.arc(p.ox, p.oy, p.r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.restore();
+  }
+
+  // Draw stylized cartoon lollipop / button tree (Inspired by reference image)
+  drawLollipopTree(ctx, x, y, trunkH, r, trunkColor, leafColor, highColor) {
+    ctx.save();
+    ctx.translate(x, y);
+
+    // Slender vertical trunk
+    ctx.fillStyle = trunkColor;
+    ctx.fillRect(-2.5, 0, 5, trunkH);
+
+    // Tree round canopy base shadow
+    ctx.fillStyle = '#1c5e3d';
     ctx.beginPath();
-    ctx.ellipse(60, 24, 75, 26, 0, 0, Math.PI * 2);
+    ctx.arc(0, -r + 4, r * 0.95, 0, Math.PI * 2);
     ctx.fill();
 
-    // Cloud puffy body
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
+    // Main smooth spherical canopy
+    ctx.fillStyle = leafColor;
     ctx.beginPath();
-    ctx.arc(35, 12, 28, 0, Math.PI * 2);
-    ctx.arc(70, -2, 36, 0, Math.PI * 2);
-    ctx.arc(105, 10, 28, 0, Math.PI * 2);
-    ctx.arc(135, 20, 20, 0, Math.PI * 2);
-    ctx.arc(10, 22, 18, 0, Math.PI * 2);
+    ctx.arc(0, -r, r, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Top-right spherical highlight circle
+    ctx.fillStyle = highColor;
+    ctx.beginPath();
+    ctx.arc(r * 0.28, -r - r * 0.28, r * 0.35, 0, Math.PI * 2);
     ctx.fill();
 
     ctx.restore();
   }
 
-  // Draw stylized natural tree
-  drawTree(ctx, x, y, type, h, w, shade) {
+  // Draw stylized 3-blade cartoon grass tuft
+  drawGrassTuft(ctx, x, y, h, color) {
     ctx.save();
     ctx.translate(x, y);
+    ctx.fillStyle = color;
 
-    // Trunk
-    const trunkW = w * 0.16;
-    const trunkH = h * 0.45;
-    ctx.fillStyle = '#78350f'; // Warm cedar bark
+    // Center blade
     ctx.beginPath();
-    ctx.roundRect(-trunkW / 2, 0, trunkW, trunkH, [2, 2, 6, 6]);
+    ctx.moveTo(-2, 0);
+    ctx.quadraticCurveTo(-1, -h * 0.6, 0, -h);
+    ctx.quadraticCurveTo(1, -h * 0.6, 2, 0);
     ctx.fill();
 
-    // Canopy
-    if (type === 'pine') {
-      // 3 Tiered Pine foliage
-      for (let i = 0; i < 3; i++) {
-        const tierY = -trunkH * 0.2 - i * (h * 0.24);
-        const tierW = w * (0.9 - i * 0.18);
-        const tierH = h * 0.32;
+    // Left curved blade
+    ctx.beginPath();
+    ctx.moveTo(-3, 0);
+    ctx.quadraticCurveTo(-4, -h * 0.45, -h * 0.45, -h * 0.7);
+    ctx.quadraticCurveTo(-1.5, -h * 0.35, -0.5, 0);
+    ctx.fill();
 
-        ctx.fillStyle = i === 2 ? '#22c55e' : shade;
-        ctx.beginPath();
-        ctx.moveTo(0, tierY - tierH);
-        ctx.lineTo(tierW / 2, tierY);
-        ctx.lineTo(-tierW / 2, tierY);
-        ctx.closePath();
-        ctx.fill();
-      }
-    } else {
-      // Lush rounded broadleaf/oak canopy
-      const canY = -trunkH * 0.35;
-
-      // Shadow underside
-      ctx.fillStyle = '#166534';
-      ctx.beginPath();
-      ctx.ellipse(0, canY + 12, w * 0.48, h * 0.28, 0, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Main foliage
-      ctx.fillStyle = shade;
-      ctx.beginPath();
-      ctx.arc(-w * 0.22, canY, w * 0.26, 0, Math.PI * 2);
-      ctx.arc(w * 0.22, canY, w * 0.26, 0, Math.PI * 2);
-      ctx.arc(0, canY - h * 0.14, w * 0.32, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Sunlit foliage highlight
-      ctx.fillStyle = '#86efac';
-      ctx.beginPath();
-      ctx.arc(w * 0.08, canY - h * 0.18, w * 0.18, 0, Math.PI * 2);
-      ctx.fill();
-    }
+    // Right curved blade
+    ctx.beginPath();
+    ctx.moveTo(3, 0);
+    ctx.quadraticCurveTo(4, -h * 0.45, h * 0.45, -h * 0.7);
+    ctx.quadraticCurveTo(1.5, -h * 0.35, 0.5, 0);
+    ctx.fill();
 
     ctx.restore();
   }
@@ -698,15 +846,19 @@ class Arena {
         ctx.lineTo(x + w - 60, y + 26);
         ctx.stroke();
 
-      } else if (style === 'garden_wood' || style === 'moving') {
+      } else if (style === 'garden_wood' || style === 'moving' || style === 'lift') {
         // ------------------------------------------------------------
-        // JUMPTHROUGH & MOVING PLATFORMS: Crafted Garden Wood Planks
+        // JUMPTHROUGH, MOVING PLATFORMS & VERTICAL LIFTS
         // ------------------------------------------------------------
         const isMoving = style === 'moving';
+        const isLift = style === 'lift';
 
-        // Sturdy polished wood plank body
+        // Sturdy polished wood / lift plank body
         const woodGrad = ctx.createLinearGradient(x, y, x, y + h);
-        if (isMoving) {
+        if (isLift) {
+          woodGrad.addColorStop(0.0, '#312e81'); // Indigo/amber enchanted lift
+          woodGrad.addColorStop(1.0, '#1e1b4b');
+        } else if (isMoving) {
           woodGrad.addColorStop(0.0, '#1e3a5f'); // Enchanted floating teal wood
           woodGrad.addColorStop(1.0, '#0f172a');
         } else {
@@ -720,12 +872,12 @@ class Arena {
         ctx.fill();
 
         // Clean border
-        ctx.strokeStyle = isMoving ? 'rgba(56, 189, 248, 0.4)' : 'rgba(255, 255, 255, 0.2)';
+        ctx.strokeStyle = isLift ? 'rgba(251, 191, 36, 0.45)' : (isMoving ? 'rgba(56, 189, 248, 0.4)' : 'rgba(255, 255, 255, 0.2)');
         ctx.lineWidth = 1.5;
         ctx.stroke();
 
-        // Glowing fresh grass / leaf-green top rim for perfect player contrast
-        ctx.strokeStyle = isMoving ? '#38bdf8' : '#4ade80';
+        // Glowing fresh grass / leaf-green / cyan / amber top rim for contrast
+        ctx.strokeStyle = isLift ? '#fbbf24' : (isMoving ? '#38bdf8' : '#4ade80');
         ctx.lineWidth = 3.5;
         ctx.beginPath();
         ctx.moveTo(x + 3, y + 2);
@@ -733,13 +885,13 @@ class Arena {
         ctx.stroke();
 
         // Natural wood grain & grip notches
-        ctx.fillStyle = isMoving ? 'rgba(56, 189, 248, 0.35)' : 'rgba(254, 240, 138, 0.35)';
+        ctx.fillStyle = isLift ? 'rgba(251, 191, 36, 0.4)' : (isMoving ? 'rgba(56, 189, 248, 0.35)' : 'rgba(254, 240, 138, 0.35)');
         for (let gx = x + 25; gx < x + w - 20; gx += 28) {
           ctx.fillRect(gx, y + 6, 7, 3);
         }
 
-        // Corner vine buds
-        ctx.fillStyle = '#22c55e';
+        // Corner vine buds / gold lift rivets
+        ctx.fillStyle = isLift ? '#fbbf24' : '#22c55e';
         ctx.beginPath();
         ctx.arc(x + 5, y + h / 2, 3.5, 0, Math.PI * 2);
         ctx.arc(x + w - 5, y + h / 2, 3.5, 0, Math.PI * 2);

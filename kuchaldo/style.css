@@ -291,6 +291,48 @@ html, body {
   transition: opacity 0.25s ease;
 }
 
+.announcer-overlay.hidden {
+  display: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* Temporary Kill Notification (Pops up briefly for ~1s on player kill, then fades) */
+.kill-notification {
+  position: absolute;
+  top: 22%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(1);
+  pointer-events: none;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 1;
+  background: rgba(15, 23, 42, 0.88);
+  border: 2px solid #ffcc00;
+  box-shadow: 0 0 24px rgba(255, 204, 0, 0.55), 0 8px 24px rgba(0, 0, 0, 0.6);
+  border-radius: 24px;
+  padding: 8px 26px;
+  backdrop-filter: blur(8px);
+  transition: opacity 0.25s ease, transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.kill-notification.hidden {
+  opacity: 0 !important;
+  transform: translate(-50%, -50%) scale(0.6);
+  pointer-events: none !important;
+}
+
+.kill-text {
+  font-size: clamp(22px, 4.5vw, 34px);
+  font-weight: 900;
+  color: #ffde59;
+  text-shadow: 0 2px 0 #b38f00, 0 0 14px rgba(255, 222, 89, 0.8);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+
 .announcer-text {
   font-size: clamp(48px, 10vw, 96px);
   font-weight: 900;
@@ -548,6 +590,10 @@ html, body {
   grid-template-columns: repeat(3, 1fr);
   gap: 10px;
   margin-bottom: 24px;
+}
+
+.modal-card > .stats-grid:last-child {
+  margin-bottom: 0;
 }
 
 .stat-item {

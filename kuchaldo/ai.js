@@ -13,6 +13,8 @@ class BotController {
     this.reactionDelay = 0.08;
     this.wanderDir = Math.random() > 0.5 ? 1 : -1;
     this.wanderTimer = 1.0;
+    this.stuckTimer = 0;
+    this.lastX = fighter.x;
   }
 
   update(dt, fighters, arena) {
@@ -22,6 +24,19 @@ class BotController {
     this.targetCheckTimer -= dt;
     this.actionTimer -= dt;
     this.wanderTimer -= dt;
+
+    // Unstick helper
+    if (Math.abs(b.x - this.lastX) < 2 && b.onGround) {
+      this.stuckTimer += dt;
+      if (this.stuckTimer > 1.2) {
+        b.jump();
+        this.wanderDir = -this.wanderDir;
+        this.stuckTimer = 0;
+      }
+    } else {
+      this.stuckTimer = 0;
+      this.lastX = b.x;
+    }
 
     // 1. RECOVERY PRIORITY: If falling off stage or in danger zone, try to recover!
     if (this.handleRecovery(arena)) {
@@ -96,8 +111,8 @@ class BotController {
     const b = this.bot;
 
     // Check if falling below stage platforms
-    const isBelowMainStage = b.y > 750;
-    const isPastEdge = b.x < 200 || b.x > 1600;
+    const isBelowMainStage = b.y > 830;
+    const isPastEdge = b.x < 100 || b.x > 1700;
 
     if (isBelowMainStage || isPastEdge) {
       // Find nearest safe platform
@@ -121,11 +136,6 @@ class BotController {
         b.jump();
       }
 
-      // Dash towards center if available
-      if (b.dashCooldown <= 0 && Math.abs(b.x - nearestX) > 200) {
-        b.dash();
-      }
-
       return true; // recovery takes priority
     }
     return false;
@@ -144,15 +154,17 @@ class BotController {
     // 1. Attack or Stomp if in range
     if (dist < 65 && Math.abs(dy) < 35) {
       b.attack();
-    } else if (dist < 130 && Math.abs(dy) < 30 && b.dashCooldown <= 0) {
-      // Dash ram
-      b.dash();
     }
 
     // 2. Stomp if above enemy
     if (Math.abs(dx) < 30 && dy > 20 && dy < 150 && b.vy > 0) {
       // Aim straight down for head bounce!
       b.move(dir, dt);
+      return;
+    }
+
+    // 2b. Smart platform traversals (jump pads, lifts, movers)
+    if (this.handlePlatformTraversals(dt, arena)) {
       return;
     }
 
@@ -244,8 +256,6 @@ class BotController {
         b.jump();
       } else if (Math.random() < 0.25) {
         b.dropDown();
-      } else if (Math.random() < 0.2 && b.dashCooldown <= 0) {
-        b.dash();
       }
     }
 
@@ -266,7 +276,68 @@ class BotController {
       }
     }
 
+    if (this.handlePlatformTraversals(dt, arena)) {
+      return;
+    }
+
     b.move(this.wanderDir, dt);
+  }
+
+  // --- SMART PLATFORM TRAVERSAL (Jump pads, Lifts, Moving platforms) ---
+  handlePlatformTraversals(dt, arena) {
+    const b = this.bot;
+    if (!this.target) return false;
+
+    const dy = this.target.y - b.y;
+    const dx = this.target.x - b.x;
+
+    // 1. If on 2nd platform (high_center) and target is higher up (dy < -50), use the center jump pad!
+    if (b.currentPlatform && b.currentPlatform.id === 'high_center' && dy < -50) {
+      const padX = 900;
+      if (Math.abs(b.x - padX) > 12) {
+        b.move(Math.sign(padX - b.x), dt);
+        return true;
+      }
+    }
+
+    // 2. If riding a vertical lift:
+    if (b.currentPlatform && (b.currentPlatform.style === 'lift' || b.currentPlatform.moveType === 'lift')) {
+      const plat = b.currentPlatform;
+      const isTargetHigher = dy < -40;
+      const isLiftGoingUp = plat.vy < -5;
+      const isLiftGoingDown = plat.vy > 5;
+      const isAtTargetHeight = Math.abs(dy) < 55;
+
+      if (isAtTargetHeight) {
+        // Step off lift toward target
+        b.move(Math.sign(dx), dt);
+        if (Math.abs(dx) > 80 && b.onGround) b.jump();
+        return true;
+      } else if ((isTargetHigher && isLiftGoingUp) || (!isTargetHigher && isLiftGoingDown)) {
+        // Ride lift smoothly
+        const liftCenter = plat.x + plat.w / 2;
+        if (Math.abs(b.x - liftCenter) > 20) {
+          b.move(Math.sign(liftCenter - b.x), dt);
+        } else {
+          b.move(0, dt);
+        }
+        return true;
+      }
+    }
+
+    // 3. If near a vertical lift that goes in the direction of target, board it!
+    if (Math.abs(dy) > 90 && b.onGround) {
+      for (const plat of arena.platforms) {
+        if (plat.style === 'lift' && Math.abs(b.y - plat.y) < 20 && Math.abs(b.x - (plat.x + plat.w / 2)) < 120) {
+          if ((dy < 0 && plat.y > plat.yTop) || (dy > 0 && plat.y < plat.yBottom)) {
+            b.move(Math.sign((plat.x + plat.w / 2) - b.x), dt);
+            return true;
+          }
+        }
+      }
+    }
+
+    return false;
   }
 
   // --- PLATFORM EDGE DETECTION ---

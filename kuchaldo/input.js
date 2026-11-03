@@ -92,23 +92,19 @@ class InputController {
       this.mapKey(e.code, false);
     });
 
-    // Mouse Attack & Dash for desktop
+    // Mouse Attack for desktop
     window.addEventListener('mousedown', (e) => {
       if (e.target.closest('button') || e.target.closest('.modal-card')) return;
       if (window.soundEngine) window.soundEngine.ensureContext();
 
       if (e.button === 0) {
         this.setVirtualAction('attack', true);
-      } else if (e.button === 2) {
-        this.setVirtualAction('dash', true);
       }
     });
 
     window.addEventListener('mouseup', (e) => {
       if (e.button === 0) {
         this.setVirtualAction('attack', false);
-      } else if (e.button === 2) {
-        this.setVirtualAction('dash', false);
       }
     });
 
@@ -139,11 +135,6 @@ class InputController {
     // Attack
     if (code === 'KeyJ' || code === 'KeyX' || code === 'KeyF') {
       this.setVirtualAction('attack', isDown);
-    }
-
-    // Dash
-    if (code === 'KeyK' || code === 'ShiftLeft' || code === 'ShiftRight') {
-      this.setVirtualAction('dash', isDown);
     }
 
     // Enter / Restart

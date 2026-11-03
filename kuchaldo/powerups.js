@@ -14,12 +14,12 @@ const POWERUP_TYPES = {
   },
   SPEED_BOOTS: {
     id: 'SPEED_BOOTS',
-    name: 'Hyper Dash',
+    name: 'Hyper Speed',
     icon: '⚡',
     color: '#00e5ff',
     aura: 'rgba(0, 229, 255, 0.45)',
     duration: 9.0,
-    desc: 'Fast Speed & Quick Dash!'
+    desc: 'Fast Movement Speed!'
   },
   BUBBLE_SHIELD: {
     id: 'BUBBLE_SHIELD',

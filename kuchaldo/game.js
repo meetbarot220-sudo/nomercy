@@ -32,9 +32,10 @@ class GameEngine {
     this.state = 'TITLE';
 
     // Match configuration
-    this.matchDuration = 120; // 2 minutes
+    this.matchDuration = 90; // 90 seconds (1:30)
     this.matchTime = this.matchDuration;
-    this.countdownTimer = 3.5;
+    this.countdownTimer = 3.0;
+    this.brawlDisplayTimer = 0;
 
     // Fighters list
     this.fighters = [];
@@ -83,12 +84,12 @@ class GameEngine {
       facing: 1
     });
 
-    // 2. Bot 1 (Blaze - Aggressive, Green + Spiky Mohawk)
+    // 2. Bot 1 (Blaze - Aggressive, Green, NO crown/accessory)
     const bot1 = new Fighter({
       id: 'bot_blaze',
       name: 'Blaze',
       isBot: true,
-      accessory: 'mohawk',
+      accessory: null, // No crown / accessory
       personality: 'aggressive',
       themeKey: 'bot_blaze',
       x: 1050,
@@ -169,15 +170,6 @@ class GameEngine {
       });
     }
 
-    // Play Again Button
-    const btnRestart = document.getElementById('btn-restart');
-    if (btnRestart) {
-      btnRestart.addEventListener('click', () => {
-        window.soundEngine.init();
-        this.startMatch();
-      });
-    }
-
     // Sound & Music Buttons
     const btnSound = document.getElementById('btn-sound');
     if (btnSound) {
@@ -192,18 +184,6 @@ class GameEngine {
       btnMusic.addEventListener('click', () => {
         const on = window.soundEngine.toggleMusic();
         btnMusic.textContent = on ? '🎵' : '🔇';
-      });
-    }
-
-    // Fullscreen Button
-    const btnFullscreen = document.getElementById('btn-fullscreen');
-    if (btnFullscreen) {
-      btnFullscreen.addEventListener('click', () => {
-        if (!document.fullscreenElement) {
-          document.documentElement.requestFullscreen().catch(() => {});
-        } else {
-          document.exitFullscreen().catch(() => {});
-        }
       });
     }
   }
@@ -257,10 +237,16 @@ class GameEngine {
 
   // --- START / RESTART MATCH ---
   startMatch() {
-    // Hide Modals
+    // Hide Modals & notifications
     document.getElementById('title-screen').classList.add('hidden');
     document.getElementById('game-over-modal').classList.add('hidden');
     document.body.classList.remove('game-over');
+
+    if (this.killNotifTimeout) {
+      clearTimeout(this.killNotifTimeout);
+    }
+    const notif = document.getElementById('kill-notification');
+    if (notif) notif.classList.add('hidden');
 
     // Restore Mobile Touch Controls if on a touch device
     if (window.input && window.input.isTouchDevice) {
@@ -287,12 +273,18 @@ class GameEngine {
     });
 
     this.matchTime = this.matchDuration;
-    this.countdownTimer = 3.5;
+    this.countdownTimer = 3.0; // 3 -> 2 -> 1 -> BRAWL!
+    this.brawlDisplayTimer = 0;
     this.state = 'COUNTDOWN';
 
-    // Show Announcer Overlay
+    // Show Announcer Overlay with 3
     const announcer = document.getElementById('announcer-overlay');
-    announcer.classList.remove('hidden');
+    const announcerText = document.getElementById('announcer-text');
+    if (announcer) announcer.classList.remove('hidden');
+    if (announcerText) {
+      announcerText.textContent = '3';
+      announcerText.style.color = '#ffffff';
+    }
 
     this.updateHUD();
   }
@@ -311,6 +303,13 @@ class GameEngine {
       return;
     }
 
+    // Check if player scored this kill -> Show temporary "1 KILL", "2 KILLS", etc.
+    if (fighter.lastAttacker && !fighter.lastAttacker.isBot) {
+      const kills = this.player.kills;
+      const killText = kills === 1 ? '1 KILL' : `${kills} KILLS`;
+      this.showKillNotification(killText);
+    }
+
     // 2. A BOT DIED: Check if all 3 bots are eliminated
     const aliveBots = this.fighters.filter(f => f.isBot && f.isAlive);
     const playerAlive = this.player && this.player.isAlive;
@@ -318,6 +317,24 @@ class GameEngine {
     if (aliveBots.length === 0 && playerAlive) {
       this.endMatch('PLAYER_WON');
     }
+  }
+
+  // Temporary kill notification (appears for ~1s after player kills an enemy, then fades)
+  showKillNotification(text) {
+    const notif = document.getElementById('kill-notification');
+    const killText = document.getElementById('kill-text');
+    if (!notif || !killText) return;
+
+    killText.textContent = text;
+    notif.classList.remove('hidden');
+
+    if (this.killNotifTimeout) {
+      clearTimeout(this.killNotifTimeout);
+    }
+
+    this.killNotifTimeout = setTimeout(() => {
+      notif.classList.add('hidden');
+    }, 1000);
   }
 
   // --- END MATCH ---
@@ -335,6 +352,12 @@ class GameEngine {
     if (mobileControls) {
       mobileControls.classList.add('hidden');
     }
+
+    if (this.killNotifTimeout) {
+      clearTimeout(this.killNotifTimeout);
+    }
+    const notif = document.getElementById('kill-notification');
+    if (notif) notif.classList.add('hidden');
 
     const modal = document.getElementById('game-over-modal');
     const trophy = document.getElementById('modal-trophy');
@@ -393,9 +416,9 @@ class GameEngine {
 
   // --- UPDATE ---
   update(dt) {
-    // 1. Handle Start triggers if in Title or Game Over
+    // 1. Handle Start triggers if in Title
     if (window.input.isJustPressed('start')) {
-      if (this.state === 'TITLE' || this.state === 'GAME_OVER') {
+      if (this.state === 'TITLE') {
         window.soundEngine.init();
         this.startMatch();
         return;
@@ -413,35 +436,51 @@ class GameEngine {
       return; // Freeze game physics during hitstop frame
     }
 
-    // 3. Match Countdown Phase
+    // 3. Match Countdown Phase (3 -> 2 -> 1 -> BRAWL!)
     if (this.state === 'COUNTDOWN') {
       this.countdownTimer -= dt;
       const announcer = document.getElementById('announcer-text');
 
-      if (this.countdownTimer > 2.5) {
-        if (announcer.textContent !== '3') {
+      if (this.countdownTimer > 2.0) {
+        if (announcer && announcer.textContent !== '3') {
           announcer.textContent = '3';
+          announcer.style.color = '#ffffff';
           window.soundEngine.playBeep(false);
         }
-      } else if (this.countdownTimer > 1.5) {
-        if (announcer.textContent !== '2') {
+      } else if (this.countdownTimer > 1.0) {
+        if (announcer && announcer.textContent !== '2') {
           announcer.textContent = '2';
-          window.soundEngine.playBeep(false);
-        }
-      } else if (this.countdownTimer > 0.5) {
-        if (announcer.textContent !== '1') {
-          announcer.textContent = '1';
+          announcer.style.color = '#ffffff';
           window.soundEngine.playBeep(false);
         }
       } else if (this.countdownTimer > 0) {
-        if (announcer.textContent !== 'BRAWL!') {
-          announcer.textContent = 'BRAWL!';
-          announcer.style.color = '#ff3344';
-          window.soundEngine.playBeep(true);
+        if (announcer && announcer.textContent !== '1') {
+          announcer.textContent = '1';
+          announcer.style.color = '#ffffff';
+          window.soundEngine.playBeep(false);
         }
       } else {
-        document.getElementById('announcer-overlay').classList.add('hidden');
+        // Countdown finished: Display "BRAWL!"
+        if (announcer) {
+          announcer.textContent = 'BRAWL!';
+          announcer.style.color = '#ff2a4b';
+        }
+        window.soundEngine.playBeep(true);
+
+        // Immediately unlock player controls, unlock bot AI, and start match normally!
         this.state = 'PLAYING';
+        this.brawlDisplayTimer = 0.85; // BRAWL! displays for 0.85s, then cleanly fades out
+      }
+    }
+
+    // Auto-hide announcer overlay after BRAWL! duration finishes
+    if (this.brawlDisplayTimer > 0) {
+      this.brawlDisplayTimer -= dt;
+      if (this.brawlDisplayTimer <= 0) {
+        const announcerOverlay = document.getElementById('announcer-overlay');
+        if (announcerOverlay) {
+          announcerOverlay.classList.add('hidden');
+        }
       }
     }
 
@@ -460,8 +499,8 @@ class GameEngine {
     // 5. Arena & Environment update
     window.arena.update(dt);
 
-    // 6. Player Input Processing
-    if (this.player && this.player.isAlive && (this.state === 'PLAYING' || this.state === 'COUNTDOWN')) {
+    // 6. Player Input Processing (Frozen during countdown, strictly active only during PLAYING)
+    if (this.player && this.player.isAlive && this.state === 'PLAYING') {
       let moveDir = 0;
       if (window.input.isDown('left')) moveDir -= 1;
       if (window.input.isDown('right')) moveDir += 1;
@@ -476,23 +515,26 @@ class GameEngine {
         this.player.dropDown();
       }
 
-      if (this.state === 'PLAYING') {
-        if (window.input.isJustPressed('attack') || (window.input.isDown('attack') && this.player.attackCooldown <= 0)) {
-          this.player.attack();
-        }
-        if (window.input.isJustPressed('dash')) {
-          this.player.dash();
-        }
+      if (window.input.isJustPressed('attack') || (window.input.isDown('attack') && this.player.attackCooldown <= 0)) {
+        this.player.attack();
       }
     }
 
-    // 7. Bot AI Update
+    // 7. Bot AI Update (Frozen during countdown, strictly active only during PLAYING)
     if (this.state === 'PLAYING') {
       this.botControllers.forEach(ctrl => ctrl.update(dt, this.fighters, window.arena));
     }
 
     // 8. Update Fighters Physics
-    this.fighters.forEach(f => f.update(dt, window.arena));
+    if (this.state === 'COUNTDOWN') {
+      // Keep all fighters completely stationary during countdown
+      this.fighters.forEach(f => {
+        f.vx = 0;
+        f.vy = 0;
+      });
+    } else {
+      this.fighters.forEach(f => f.update(dt, window.arena));
+    }
 
     // 9. Combat Hitboxes & Stomp Interactions
     if (this.state === 'PLAYING') {
@@ -555,16 +597,6 @@ class GameEngine {
             const baseKnockback = 340;
 
             f2.takeHit(f1, baseDamage, baseKnockback, angle);
-          }
-        }
-
-        // 3. DASH RAM HITBOX CHECK
-        if (f1.isDashing && f2.invulnerableTimer <= 0) {
-          const dist = Math.hypot(f1.x - f2.x, (f1.y - f1.radius) - (f2.y - f2.radius));
-          if (dist < f1.radius + f2.radius) {
-            const angle = f1.facing > 0 ? -0.25 : Math.PI + 0.25;
-            f2.takeHit(f1, 10, 420, angle);
-            f1.isDashing = false; // end dash on hit
           }
         }
       }

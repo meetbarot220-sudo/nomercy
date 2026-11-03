@@ -27,7 +27,7 @@
       <div class="hud-center">
         <div class="match-timer-box" id="match-timer-container">
           <span class="timer-icon">⏱</span>
-          <span id="match-timer">02:00</span>
+          <span id="match-timer">01:30</span>
         </div>
       </div>
 
@@ -58,7 +58,6 @@
         <div class="hud-buttons-cluster">
           <button id="btn-sound" class="hud-btn" title="Toggle Sound (M)" aria-label="Toggle Sound">🔊</button>
           <button id="btn-music" class="hud-btn" title="Toggle Music (B)" aria-label="Toggle Music">🎵</button>
-          <button id="btn-fullscreen" class="hud-btn" title="Fullscreen" aria-label="Toggle Fullscreen">⛶</button>
         </div>
       </div>
     </header>
@@ -66,6 +65,11 @@
     <!-- Center Announcer & Overlay Banner -->
     <div id="announcer-overlay" class="announcer-overlay hidden">
       <div id="announcer-text" class="announcer-text">3</div>
+    </div>
+
+    <!-- Temporary Kill Notification (Appears for ~1 second after player kill, then fades away) -->
+    <div id="kill-notification" class="kill-notification hidden">
+      <span id="kill-text" class="kill-text">1 KILL</span>
     </div>
 
     <!-- Match Over Modal -->
@@ -77,13 +81,6 @@
 
         <div class="stats-grid" id="modal-stats">
           <!-- Populated by JS -->
-        </div>
-
-        <div class="modal-actions">
-          <button id="btn-restart" class="action-btn restart-btn">
-            <span>PLAY AGAIN</span>
-            <span class="key-hint">(ENTER or SPACE)</span>
-          </button>
         </div>
       </div>
     </div>
@@ -127,12 +124,8 @@
             <span class="control-keys"><kbd>W</kbd> or <kbd>SPACE</kbd></span>
           </div>
           <div class="control-row">
-            <span class="control-label">Punch / Attack:</span>
+            <span class="control-label">Punch:</span>
             <span class="control-keys"><kbd>J</kbd> or <kbd>X</kbd> or <kbd>Left Click</kbd></span>
-          </div>
-          <div class="control-row">
-            <span class="control-label">Burst Dash:</span>
-            <span class="control-keys"><kbd>K</kbd> or <kbd>SHIFT</kbd></span>
           </div>
           <div class="control-row">
             <span class="control-label">Drop Platform:</span>
@@ -170,9 +163,9 @@
           <span class="touch-icon">⬆️</span>
           <span class="touch-label">JUMP</span>
         </button>
-        <button id="touch-attack" class="touch-btn action-circle attack-circle" data-key="attack" aria-label="Attack">
+        <button id="touch-attack" class="touch-btn action-circle attack-circle" data-key="attack" aria-label="Punch">
           <span class="touch-icon">🥊</span>
-          <span class="touch-label">ATTACK</span>
+          <span class="touch-label">PUNCH</span>
         </button>
       </div>
     </div>
