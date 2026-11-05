@@ -88,12 +88,12 @@ class GameEngine {
       facing: 1
     });
 
-    // 2. Bot 1 (Blaze - Aggressive, Green, NO crown/accessory)
+    // 2. Bot 1 (Blaze - Aggressive, Green Bot + Pink Princess Bow)
     const bot1 = new Fighter({
       id: 'bot_blaze',
       name: 'Blaze',
       isBot: true,
-      accessory: null, // No crown / accessory
+      accessory: 'princess_bow', // Pink satin princess bow
       personality: 'aggressive',
       themeKey: 'bot_blaze',
       x: 1050,

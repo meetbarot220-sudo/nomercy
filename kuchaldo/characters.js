@@ -871,6 +871,19 @@ class Fighter {
       ctx.beginPath();
       ctx.arc(0, capY - 12, 2.5, 0, Math.PI * 2);
       ctx.fill();
+
+    } else if (this.accessory === 'princess_bow') {
+      // BOT 1 (Blaze - Green Bot): Beautiful Pink Satin Princess Bow
+      const bowW = 38;
+      const bowH = 37;
+      const bowX = -bowW / 2;
+      const bowY = bodyCenterY - bodyRadius - 16;
+
+      if (Fighter.bowImage && Fighter.bowImage.complete && Fighter.bowImage.naturalWidth > 0) {
+        ctx.drawImage(Fighter.bowImage, bowX, bowY, bowW, bowH);
+      } else {
+        this.renderProceduralPinkBow(ctx, bodyCenterY - bodyRadius);
+      }
     }
 
     // 5. Attack / Punch Fist Rendering
@@ -920,4 +933,96 @@ class Fighter {
 
     ctx.restore();
   }
+
+  // --- PROCEDURAL PINK SATIN PRINCESS BOW (Exact visual match fallback) ---
+  renderProceduralPinkBow(ctx, headTopY) {
+    ctx.save();
+    const knotY = headTopY - 2;
+
+    // 1. Two hanging ribbon tails (behind loops)
+    const tailGrad = ctx.createLinearGradient(0, knotY, 0, knotY + 22);
+    tailGrad.addColorStop(0, '#f472b6');
+    tailGrad.addColorStop(0.5, '#ec4899');
+    tailGrad.addColorStop(1, '#be185d');
+
+    // Left tail
+    ctx.fillStyle = tailGrad;
+    ctx.beginPath();
+    ctx.moveTo(-4, knotY + 4);
+    ctx.quadraticCurveTo(-14, knotY + 12, -16, knotY + 22);
+    ctx.lineTo(-11, knotY + 19);
+    ctx.lineTo(-6, knotY + 22);
+    ctx.quadraticCurveTo(-7, knotY + 12, -1, knotY + 4);
+    ctx.closePath();
+    ctx.fill();
+
+    // Right tail
+    ctx.beginPath();
+    ctx.moveTo(4, knotY + 4);
+    ctx.quadraticCurveTo(14, knotY + 12, 16, knotY + 22);
+    ctx.lineTo(11, knotY + 19);
+    ctx.lineTo(6, knotY + 22);
+    ctx.quadraticCurveTo(7, knotY + 12, 1, knotY + 4);
+    ctx.closePath();
+    ctx.fill();
+
+    // 2. Left and Right large satin loops
+    const loopGradLeft = ctx.createRadialGradient(-10, knotY - 6, 2, -10, knotY - 4, 16);
+    loopGradLeft.addColorStop(0, '#fce7f3'); // bright specular satin highlight
+    loopGradLeft.addColorStop(0.4, '#f472b6');
+    loopGradLeft.addColorStop(0.85, '#db2777');
+    loopGradLeft.addColorStop(1, '#9d174d');
+
+    // Left loop
+    ctx.fillStyle = loopGradLeft;
+    ctx.beginPath();
+    ctx.moveTo(-3, knotY);
+    ctx.bezierCurveTo(-16, knotY - 18, -24, knotY - 6, -18, knotY + 2);
+    ctx.bezierCurveTo(-14, knotY + 5, -6, knotY + 3, -3, knotY + 2);
+    ctx.closePath();
+    ctx.fill();
+
+    // Right loop
+    const loopGradRight = ctx.createRadialGradient(10, knotY - 6, 2, 10, knotY - 4, 16);
+    loopGradRight.addColorStop(0, '#fce7f3');
+    loopGradRight.addColorStop(0.4, '#f472b6');
+    loopGradRight.addColorStop(0.85, '#db2777');
+    loopGradRight.addColorStop(1, '#9d174d');
+
+    ctx.fillStyle = loopGradRight;
+    ctx.beginPath();
+    ctx.moveTo(3, knotY);
+    ctx.bezierCurveTo(16, knotY - 18, 24, knotY - 6, 18, knotY + 2);
+    ctx.bezierCurveTo(14, knotY + 5, 6, knotY + 3, 3, knotY + 2);
+    ctx.closePath();
+    ctx.fill();
+
+    // 3. Center satin knot
+    const knotGrad = ctx.createLinearGradient(-4, knotY - 5, 4, knotY + 5);
+    knotGrad.addColorStop(0, '#fdf2f8');
+    knotGrad.addColorStop(0.5, '#ec4899');
+    knotGrad.addColorStop(1, '#9d174d');
+    ctx.fillStyle = knotGrad;
+    ctx.beginPath();
+    ctx.roundRect(-4.5, knotY - 4, 9, 8, 3);
+    ctx.fill();
+
+    // Subtle satin highlight stroke
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(-11, knotY - 7, 5, -0.4, Math.PI * 0.7);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(11, knotY - 7, 5, Math.PI * 0.3, Math.PI * 1.4);
+    ctx.stroke();
+
+    ctx.restore();
+  }
+}
+
+// Preload Princess Bow image asset
+if (typeof Image !== 'undefined') {
+  Fighter.bowImage = new Image();
+  Fighter.bowImage.src = 'pink_bow.png';
 }
