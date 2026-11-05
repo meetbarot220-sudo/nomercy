@@ -28,8 +28,8 @@ class GameEngine {
     this.canvas = document.getElementById('game-canvas');
     this.ctx = this.canvas.getContext('2d');
 
-    // Match States: 'TITLE', 'COUNTDOWN', 'PLAYING', 'GAME_OVER'
-    this.state = 'TITLE';
+    // Match States: 'WAITING_START', 'COUNTDOWN', 'PLAYING', 'GAME_OVER'
+    this.state = 'WAITING_START';
 
     // Match configuration
     this.matchDuration = 90; // 90 seconds (1:30)
@@ -161,19 +161,50 @@ class GameEngine {
 
   // --- UI SETUP & EVENT LISTENERS ---
   initUI() {
-    // Start Brawl Button
-    const btnStart = document.getElementById('btn-start');
-    if (btnStart) {
-      btnStart.addEventListener('click', () => {
-        window.soundEngine.init();
-        this.startMatch();
-      });
+    // Tap or Click Anywhere to Start Listener (Desktop click/keyboard + Mobile touch)
+    const handleGlobalStart = (e) => {
+      if (this.state !== 'WAITING_START' && this.state !== 'TITLE') return;
+
+      // Don't intercept sound button clicks
+      if (e && e.target && (e.target.closest('#btn-sound') || e.target.closest('#btn-music'))) return;
+
+      if (e && e.cancelable) {
+        e.preventDefault();
+      }
+      if (e) {
+        e.stopPropagation();
+      }
+
+      window.soundEngine.init();
+
+      // Reset input immediately so the start click/tap/keypress never triggers a punch or jump
+      if (window.input) {
+        window.input.reset();
+      }
+
+      this.startMatch();
+    };
+
+    const tapHint = document.getElementById('tap-to-start-hint');
+    if (tapHint) {
+      tapHint.addEventListener('pointerdown', handleGlobalStart);
     }
+    window.addEventListener('pointerdown', (e) => {
+      if (this.state === 'WAITING_START' || this.state === 'TITLE') {
+        handleGlobalStart(e);
+      }
+    });
+    window.addEventListener('keydown', (e) => {
+      if (this.state === 'WAITING_START' || this.state === 'TITLE') {
+        handleGlobalStart(e);
+      }
+    });
 
     // Sound & Music Buttons
     const btnSound = document.getElementById('btn-sound');
     if (btnSound) {
-      btnSound.addEventListener('click', () => {
+      btnSound.addEventListener('click', (e) => {
+        e.stopPropagation();
         const on = window.soundEngine.toggleSound();
         btnSound.textContent = on ? '🔊' : '🔇';
       });
@@ -181,7 +212,8 @@ class GameEngine {
 
     const btnMusic = document.getElementById('btn-music');
     if (btnMusic) {
-      btnMusic.addEventListener('click', () => {
+      btnMusic.addEventListener('click', (e) => {
+        e.stopPropagation();
         const on = window.soundEngine.toggleMusic();
         btnMusic.textContent = on ? '🎵' : '🔇';
       });
@@ -190,13 +222,18 @@ class GameEngine {
 
   // Build HUD Fighter Status Cards
   buildFightersHUD() {
-    // Initial HUD elements are pre-rendered in HTML for zero-delay layout stability
     this.updateHUD();
   }
 
-  // Update HUD values
+  // Update HUD values (Show ONLY: MY SCORE, TIME, TIME SURVIVED, and Bot Count)
   updateHUD() {
-    // 1. Center Timer
+    // 1. MY SCORE: Player's current score
+    const scoreElem = document.getElementById('hud-my-score');
+    if (scoreElem) {
+      scoreElem.textContent = this.player ? (this.player.score || 0) : 0;
+    }
+
+    // 2. TIME: Remaining match time (90s countdown)
     const timerElem = document.getElementById('match-timer');
     if (timerElem) {
       const mins = Math.floor(Math.max(0, this.matchTime) / 60);
@@ -204,41 +241,30 @@ class GameEngine {
       timerElem.textContent = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     }
 
-    // 2. Top-Left Player Information (clean badge without damage percentage)
-    const playerCard = document.getElementById('hud-player-card');
-    if (this.player && playerCard) {
-      if (!this.player.isAlive) {
-        playerCard.classList.add('eliminated');
-      } else {
-        playerCard.classList.remove('eliminated');
-      }
+    // 3. TIME SURVIVED: Total time player survived
+    const survivedElem = document.getElementById('hud-time-survived');
+    if (survivedElem) {
+      const totalSecs = Math.floor(this.player ? this.player.survivalTime : 0);
+      const sMins = Math.floor(totalSecs / 60);
+      const sSecs = totalSecs % 60;
+      survivedElem.textContent = `${sMins.toString().padStart(2, '0')}:${sSecs.toString().padStart(2, '0')}`;
     }
 
-    // 3. Top-Right Bots Remaining Count
+    // 4. Bot Count Indicator
     const aliveBots = this.fighters.filter(f => f.isBot && f.isAlive).length;
     const aliveElem = document.getElementById('alive-count');
     if (aliveElem) {
       aliveElem.innerHTML = `BOTS: <span style="color:#ffde59;font-weight:900;">${aliveBots}/3</span>`;
     }
-
-    // 4. Individual Bot Mini Indicators
-    const bots = this.fighters.filter(f => f.isBot);
-    bots.forEach(b => {
-      const item = document.getElementById(`card-dmg-${b.id}`);
-      if (item) {
-        if (!b.isAlive) {
-          item.classList.add('eliminated');
-        } else {
-          item.classList.remove('eliminated');
-        }
-      }
-    });
   }
 
   // --- START / RESTART MATCH ---
   startMatch() {
-    // Hide Modals & notifications
-    document.getElementById('title-screen').classList.add('hidden');
+    // Hide Modals & Start Hint
+    const tapHint = document.getElementById('tap-to-start-hint');
+    if (tapHint) tapHint.classList.add('hidden');
+    const titleScreen = document.getElementById('title-screen');
+    if (titleScreen) titleScreen.classList.add('hidden');
     document.getElementById('game-over-modal').classList.add('hidden');
     document.body.classList.remove('game-over');
 
@@ -290,16 +316,12 @@ class GameEngine {
   }
 
   // --- FIGHTER ELIMINATION HANDLER ---
-  // PRIORITY RULES:
-  // IF PLAYER DIES -> GAME OVER IMMEDIATELY (YOU LOST)
-  // ELSE IF ALL BOTS DIE -> PLAYER WINS IMMEDIATELY (YOU WIN!)
-  // ELSE -> CONTINUE MATCH
   onFighterEliminated(fighter) {
     this.updateHUD();
 
-    // 1. IF PLAYER DIES: IMMEDIATELY END MATCH!
+    // 1. IF PLAYER DIES: IMMEDIATELY END MATCH (Player fell out of arena)
     if (!fighter.isBot) {
-      this.endMatch('PLAYER_LOST');
+      this.endMatch('PLAYER_FALL_OUT');
       return;
     }
 
@@ -365,33 +387,53 @@ class GameEngine {
     const subtitle = document.getElementById('modal-subtitle');
     const statsGrid = document.getElementById('modal-stats');
 
+    const finalScore = this.player ? (this.player.score || 0) : 0;
+    const finalSurvival = Math.round(this.player ? this.player.survivalTime : 0);
+
     if (outcome === 'PLAYER_WON') {
       trophy.textContent = '👑';
-      title.textContent = 'YOU WIN!';
+      title.textContent = 'VICTORY!';
       title.style.color = '#ffde59';
-      subtitle.textContent = 'All AI bots were eliminated! You are the champion!';
+      subtitle.textContent = `All AI bots were eliminated! Final Score: ${finalScore}!`;
       window.soundEngine.playVictory();
+    } else if (outcome === 'TIMEOUT') {
+      // 90-second match timer reached zero normally: determine result based on player's final score!
+      if (finalScore >= 500) {
+        trophy.textContent = '🏆';
+        title.textContent = 'HIGH SCORE VICTORY!';
+        title.style.color = '#ffde59';
+        subtitle.textContent = `Time's up! Masterful combat performance with ${finalScore} score!`;
+        window.soundEngine.playVictory();
+      } else if (finalScore > 0) {
+        trophy.textContent = '⭐';
+        title.textContent = 'MATCH COMPLETE';
+        title.style.color = '#38bdf8';
+        subtitle.textContent = `Time's up! You survived the full match with ${finalScore} score!`;
+        window.soundEngine.playVictory();
+      } else {
+        trophy.textContent = '⏱️';
+        title.textContent = 'TIME EXPIRED';
+        title.style.color = '#94a3b8';
+        subtitle.textContent = `Time's up! Survived full 90s. Land punches to score points!`;
+        window.soundEngine.playVictory();
+      }
     } else {
-      // PLAYER_LOST or Timeout
+      // Player actually fell out of the arena
       trophy.textContent = '💀';
-      title.textContent = 'YOU LOST';
+      title.textContent = 'YOU FELL OUT!';
       title.style.color = '#ff3344';
       subtitle.textContent = 'You fell from the platform arena! Better luck next round!';
       window.soundEngine.playElimination();
     }
 
-    // Populate player match statistics
+    // Populate player match statistics: ONLY Final Score and Time Survived
     statsGrid.innerHTML = `
       <div class="stat-item">
-        <div class="stat-val">${this.player.kills}</div>
-        <div class="stat-lbl">Bots Eliminated</div>
+        <div class="stat-val">${finalScore}</div>
+        <div class="stat-lbl">Final Score</div>
       </div>
       <div class="stat-item">
-        <div class="stat-val">${Math.round(this.player.damageDealt)}%</div>
-        <div class="stat-lbl">Damage Dealt</div>
-      </div>
-      <div class="stat-item">
-        <div class="stat-val">${Math.round(this.player.survivalTime)}s</div>
+        <div class="stat-val">${finalSurvival}s</div>
         <div class="stat-lbl">Time Survived</div>
       </div>
     `;
@@ -484,15 +526,12 @@ class GameEngine {
       }
     }
 
-    // 4. Update Match Timer
+    // 4. Update Match Timer (90-second match duration)
     if (this.state === 'PLAYING') {
       this.matchTime -= dt;
       if (this.matchTime <= 0) {
         this.matchTime = 0;
-        // Find highest health / lowest damage survivor
-        const alive = this.fighters.filter(f => f.isAlive);
-        alive.sort((a, b) => a.damagePercentage - b.damagePercentage);
-        this.endMatch(alive.length > 0 ? alive[0] : null);
+        this.endMatch('TIMEOUT');
       }
     }
 
@@ -596,7 +635,15 @@ class GameEngine {
             const baseDamage = 14;
             const baseKnockback = 340;
 
-            f2.takeHit(f1, baseDamage, baseKnockback, angle);
+            const hitSuccess = f2.takeHit(f1, baseDamage, baseKnockback, angle);
+            // Every successful fist punch that lands on an opponent = +100 score!
+            if (hitSuccess !== false) {
+              f1.score = (f1.score || 0) + 100;
+              if (!f1.isBot) {
+                window.particles.spawnCombatText(f2.x, f2.y - 28, '+100', '#ffde59', 24);
+                this.updateHUD();
+              }
+            }
           }
         }
       }

@@ -25,87 +25,112 @@ class Arena {
       // 1. Central Main Stage (1st Platform - Wide fighting floor)
       { id: 'main', x: 550, y: 720, w: 700, h: 48, type: 'solid', style: 'main' },
 
-      // 2. High Ground Central Platform (2nd Platform) - Holds Central Jump Pad!
+      // 2. High Ground Central Platform (2nd Platform)
       { id: 'high_center', x: 700, y: 520, w: 400, h: 22, type: 'jumpthrough', style: 'garden_wood' },
 
-      // 3. Horizontal Sliding Platform - LEFT side of 1st Platform
+      // 3. Existing Middle Brown Platform (Top Center - Stationary / Locked)
+      { id: 'apex', x: 770, y: 340, w: 260, h: 20, type: 'jumpthrough', style: 'garden_wood', vx: 0, vy: 0 },
+
+      // 4. Horizontally Moving Platform - LEFT of Middle Platform (Same Height y: 340)
       {
-        id: 'moving_left',
-        x: 410,
-        baseX: 410,
-        y: 710,
-        w: 150,
-        h: 22,
+        id: 'top_moving_left',
+        x: 420,
+        baseX: 420,
+        y: 340,
+        w: 180,
+        h: 20,
         type: 'jumpthrough',
         style: 'moving',
         moveType: 'horizontal',
-        range: 110,
-        speed: 1.1,
+        range: 130,
+        speed: 1.0,
         time: 0,
         vx: 0,
         vy: 0
       },
 
-      // 4. Horizontal Sliding Platform - RIGHT side of 1st Platform
+      // 5. Horizontally Moving Platform - RIGHT of Middle Platform (Same Height y: 340)
       {
-        id: 'moving_right',
-        x: 1390,
-        baseX: 1390,
-        y: 710,
-        w: 150,
-        h: 22,
+        id: 'top_moving_right',
+        x: 1200,
+        baseX: 1200,
+        y: 340,
+        w: 180,
+        h: 20,
         type: 'jumpthrough',
         style: 'moving',
         moveType: 'horizontal',
-        range: 110,
-        speed: 1.1,
+        range: 130,
+        speed: 1.0,
         time: Math.PI,
         vx: 0,
         vy: 0
       },
 
-      // 5. Vertical Lift - Apex Connection (Connects floating 2nd platform 520 to Apex Upper Arena 340)
+      // 6. Left Sloped Bridge Ramp (Connects main left edge at y:720 downward to side_left at y:756)
       {
-        id: 'lift_apex',
-        x: 600,
-        y: 520,
-        w: 140,
-        h: 20,
-        type: 'jumpthrough',
-        style: 'lift',
-        moveType: 'lift',
-        yBottom: 520,
-        yTop: 340,
-        cycleTime: 6.5,
-        pauseTime: 1.0,
-        timer: 0.5,
+        id: 'bridge_left',
+        type: 'slope',
+        style: 'bridge',
+        x1: 420,
+        y1: 756,
+        x2: 550,
+        y2: 720,
+        x: 420,
+        y: 720,
+        w: 130,
+        h: 36,
+        thickness: 20,
         vx: 0,
         vy: 0
       },
 
-      // 6. Highest Apex Perch (Upper Arena)
-      { id: 'apex', x: 800, y: 340, w: 200, h: 18, type: 'jumpthrough', style: 'garden_wood' },
+      // 7. Small Brown Platform - LEFT (Smoothly connected to left sloped bridge)
+      { id: 'side_left', x: 260, y: 756, w: 160, h: 22, type: 'solid', style: 'garden_wood', vx: 0, vy: 0 },
 
-      // 7. Left Mid Platform
-      { id: 'mid_left', x: 230, y: 600, w: 220, h: 22, type: 'jumpthrough', style: 'garden_wood' },
+      // 8. Right Sloped Bridge Ramp (Connects main right edge at y:720 downward to side_right at y:756)
+      {
+        id: 'bridge_right',
+        type: 'slope',
+        style: 'bridge',
+        x1: 1250,
+        y1: 720,
+        x2: 1380,
+        y2: 756,
+        x: 1250,
+        y: 720,
+        w: 130,
+        h: 36,
+        thickness: 20,
+        vx: 0,
+        vy: 0
+      },
 
-      // 8. Right Mid Platform
-      { id: 'mid_right', x: 1350, y: 600, w: 220, h: 22, type: 'jumpthrough', style: 'garden_wood' },
+      // 9. Small Brown Platform - RIGHT (Smoothly connected to right sloped bridge)
+      { id: 'side_right', x: 1380, y: 756, w: 160, h: 22, type: 'solid', style: 'garden_wood', vx: 0, vy: 0 },
 
-      // 9. Left Low Recovery Island (Solid narrow)
+      // 10. Lower Blue Platform - LEFT (Stationary, with Jump Pad)
+      { id: 'mid_left', x: 230, y: 600, w: 220, h: 22, type: 'jumpthrough', style: 'moving', vx: 0, vy: 0 },
+
+      // 11. Lower Blue Platform - RIGHT (Stationary, with Jump Pad)
+      { id: 'mid_right', x: 1350, y: 600, w: 220, h: 22, type: 'jumpthrough', style: 'moving', vx: 0, vy: 0 },
+
+      // 12. Left Low Recovery Island (Solid narrow)
       { id: 'low_left', x: 120, y: 820, w: 220, h: 36, type: 'solid', style: 'island' },
 
-      // 10. Right Low Recovery Island (Solid narrow)
+      // 13. Right Low Recovery Island (Solid narrow)
       { id: 'low_right', x: 1460, y: 820, w: 220, h: 36, type: 'solid', style: 'island' }
     ];
 
     // Jump / Spring Pads:
-    // - Central Jump Pad directly on top of the floating 2nd Platform (high_center) to launch into upper arena!
-    // - Moves together with the floating 2nd platform.
+    // - Two side jump pads on the stationary lower blue platforms (mid_left & mid_right)
     // - Side recovery spring pads on low islands
+    // - Middle platform jump pad completely removed
     this.springPads = [
-      // 2nd Platform Jump Pad (Directly on top of floating high_center platform, locked to it)
-      { id: 'spring_center', platId: 'high_center', relX: 0.5, w: 52, h: 14, bounceVy: -920, animTime: 0, x: 874, y: 508 },
+      // Left Lower Blue Platform Jump Pad (mid_left inner side, stationary)
+      { id: 'spring_mid_left', platId: 'mid_left', relX: 0.75, w: 50, h: 14, bounceVy: -920, animTime: 0, x: 357.5, y: 588 },
+      // Right Lower Blue Platform Jump Pad (mid_right inner side, stationary)
+      { id: 'spring_mid_right', platId: 'mid_right', relX: 0.25, w: 50, h: 14, bounceVy: -920, animTime: 0, x: 1392.5, y: 588 },
       // Left Recovery Jump Pad
       { id: 'spring_left', platId: 'low_left', relX: 0.35, w: 50, h: 14, bounceVy: -1050, animTime: 0, x: 180, y: 808 },
       // Right Recovery Jump Pad
@@ -282,7 +307,7 @@ class Arena {
       { platId: 'high_center', relX: 375, color: '#f472b6', size: 4 },
       { platId: 'mid_left',    relX: 25,  color: '#38bdf8', size: 4 },
       { platId: 'mid_left',    relX: 205, color: '#facc15', size: 4.5 },
-      { platId: 'mid_right',   relX: 25,  color: '#f472b6', size: 4 },
+      { platId: 'mid_right',   relX: 110, color: '#f472b6', size: 4 },
       { platId: 'mid_right',   relX: 205, color: '#ffffff', size: 4.5 },
       { platId: 'low_left',    relX: 40,  color: '#facc15', size: 4.5 },
       { platId: 'low_left',    relX: 180, color: '#f472b6', size: 4 },
@@ -896,6 +921,80 @@ class Arena {
         ctx.arc(x + 5, y + h / 2, 3.5, 0, Math.PI * 2);
         ctx.arc(x + w - 5, y + h / 2, 3.5, 0, Math.PI * 2);
         ctx.fill();
+
+      } else if (style === 'bridge') {
+        // ------------------------------------------------------------
+        // SLOPED BRIDGE RAMPS: Gentle Wood Walkway connecting Central Stage to Side Platforms
+        // ------------------------------------------------------------
+        const x1 = plat.x1;
+        const y1 = plat.y1;
+        const x2 = plat.x2;
+        const y2 = plat.y2;
+        const thickness = plat.thickness || 20;
+
+        // 1. Polished Cedar Plank Ramp Body
+        const rampGrad = ctx.createLinearGradient(x1, Math.min(y1, y2), x2, Math.max(y1, y2) + thickness);
+        rampGrad.addColorStop(0.0, '#78350f'); // Warm polished cedar
+        rampGrad.addColorStop(1.0, '#451a03');
+
+        ctx.fillStyle = rampGrad;
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.lineTo(x2, y2 + thickness);
+        ctx.lineTo(x1, y1 + thickness);
+        ctx.closePath();
+        ctx.fill();
+
+        // Ramp boundary outline
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        // 2. Glowing Leaf-Green / Lawn Highlight Top Rim (matching platforms)
+        const topGrad = ctx.createLinearGradient(x1, y1, x2, y2);
+        topGrad.addColorStop(0.0, '#4ade80');
+        topGrad.addColorStop(0.5, '#86efac');
+        topGrad.addColorStop(1.0, '#4ade80');
+
+        ctx.strokeStyle = topGrad;
+        ctx.lineWidth = 3.5;
+        ctx.beginPath();
+        ctx.moveTo(x1, y1 + 1.5);
+        ctx.lineTo(x2, y2 + 1.5);
+        ctx.stroke();
+
+        // 3. Wooden Cross-Plank Notches & Brass Rivets along the Slope
+        const steps = 6;
+        for (let i = 1; i <= steps; i++) {
+          const t = i / (steps + 1);
+          const px = x1 + t * (x2 - x1);
+          const py = y1 + t * (y2 - y1);
+
+          // Wood cross-divider notch
+          ctx.strokeStyle = 'rgba(0, 0, 0, 0.35)';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(px, py + 2);
+          ctx.lineTo(px, py + thickness - 2);
+          ctx.stroke();
+
+          // Brass rivet dot
+          ctx.fillStyle = '#fef08a';
+          ctx.beginPath();
+          ctx.arc(px, py + thickness / 2, 2.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // 4. Sturdy Diagonal Wood Support Strut Beneath Ramp
+        const midX = (x1 + x2) / 2;
+        const midY = (y1 + y2) / 2 + thickness;
+        ctx.strokeStyle = '#451a03';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(midX, midY);
+        ctx.lineTo(midX, midY + 18);
+        ctx.stroke();
 
       } else {
         // ------------------------------------------------------------

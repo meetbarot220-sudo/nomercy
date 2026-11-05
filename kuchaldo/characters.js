@@ -128,6 +128,7 @@ class Fighter {
     this.walkCycle = 0;
 
     // Match statistics
+    this.score = 0;
     this.kills = 0;
     this.damageDealt = 0;
     this.survivalTime = 0;
@@ -152,6 +153,7 @@ class Fighter {
     this.punchBlockTimer = 0;
     this.activeBuff = null;
     this.hasShield = false;
+    this.score = 0;
     this.kills = 0;
     this.damageDealt = 0;
     this.survivalTime = 0;
@@ -259,7 +261,7 @@ class Fighter {
 
   // --- TAKE HIT & KNOCKBACK ---
   takeHit(attacker, damage, baseKnockback, angle) {
-    if (this.invulnerableTimer > 0 || !this.isAlive) return;
+    if (this.invulnerableTimer > 0 || !this.isAlive) return false;
 
     // 1. Check Bubble Shield
     if (this.hasShield) {
@@ -275,7 +277,7 @@ class Fighter {
       // Push attacker back slightly
       attacker.vx = -attacker.facing * 350;
       attacker.scaleX = 1.2;
-      return;
+      return false;
     }
 
     // 2. Accumulate Damage %
@@ -335,6 +337,7 @@ class Fighter {
     }
 
     this.lastAttacker = attacker;
+    return true;
   }
 
   // --- STOMP / HEAD BOUNCE ---
@@ -372,7 +375,9 @@ class Fighter {
   update(dt, arena) {
     if (!this.isAlive) return;
 
-    this.survivalTime += dt;
+    if (window.gameEngine && window.gameEngine.state === 'PLAYING') {
+      this.survivalTime += dt;
+    }
 
     // 1. Timers
     if (this.hitStunTimer > 0) this.hitStunTimer -= dt;
@@ -474,6 +479,40 @@ class Fighter {
     const footY = this.y;
 
     for (const plat of arena.platforms) {
+      if (plat.type === 'slope') {
+        const xMin = Math.min(plat.x1, plat.x2);
+        const xMax = Math.max(plat.x1, plat.x2);
+
+        // Foot horizontal bounds check with margin for smooth crossing
+        if (footX >= xMin - 4 && footX <= xMax + 4) {
+          const t = Math.max(0, Math.min(1, (footX - plat.x1) / (plat.x2 - plat.x1)));
+          const surfaceY = plat.y1 + t * (plat.y2 - plat.y1);
+
+          // Check if already on this slope, transitioning from connected platforms, or landing
+          const isOnSlope = (this.currentPlatform === plat && this.onGround);
+          const isSteppingOn = (this.onGround && Math.abs(footY - surfaceY) <= 18);
+          const isLanding = (this.vy >= 0 && footY >= surfaceY - 8 && footY <= surfaceY + 24);
+
+          if (isOnSlope || isSteppingOn || isLanding) {
+            this.y = surfaceY;
+            this.vy = 0;
+            this.onGround = true;
+            this.currentPlatform = plat;
+            this.jumpsRemaining = 2;
+            groundedThisFrame = true;
+
+            if (!prevOnGround) {
+              this.scaleX = 1.35;
+              this.scaleY = 0.65;
+              window.soundEngine.playHit(false);
+              window.particles.spawnDust(this.x, this.y, 5, 0);
+            }
+            break;
+          }
+        }
+        continue;
+      }
+
       if (plat.type === 'jumpthrough') {
         if (this.isDroppingDown) continue; // ignore jumpthrough when pressing S/down
 
@@ -506,10 +545,13 @@ class Fighter {
         const top = plat.y;
         const bottom = plat.y + plat.h;
 
-        // Feet on top
+        // Feet on top (connected platforms meet the slope bridges flush at exact edge)
+        const isBridgeConnected = (plat.id === 'main' || plat.id === 'side_left' || plat.id === 'side_right');
+        const tol = isBridgeConnected ? 0 : 10;
+
         if (this.vy >= 0 &&
-            footX >= left - 10 &&
-            footX <= right + 10 &&
+            footX >= left - tol &&
+            footX <= right + tol &&
             footY >= top - 2 &&
             footY <= top + 22) {
           this.y = top;
@@ -544,11 +586,14 @@ class Fighter {
 
         // Side walls collision
         const bodyCenterY = this.y - this.radius;
-        if (bodyCenterY > top && bodyCenterY < bottom) {
-          if (this.vx > 0 && this.x + this.radius >= left && this.x < left + 15) {
+        if (bodyCenterY >= top + 12 && bodyCenterY < bottom) {
+          const hasLeftBridge = (plat.id === 'main' || plat.id === 'side_right');
+          const hasRightBridge = (plat.id === 'main' || plat.id === 'side_left');
+
+          if (!hasLeftBridge && this.vx > 0 && this.x + this.radius >= left && this.x < left + 15) {
             this.x = left - this.radius;
             this.vx = 0;
-          } else if (this.vx < 0 && this.x - this.radius <= right && this.x > right - 15) {
+          } else if (!hasRightBridge && this.vx < 0 && this.x - this.radius <= right && this.x > right - 15) {
             this.x = right + this.radius;
             this.vx = 0;
           }
@@ -852,13 +897,6 @@ class Fighter {
       ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
       ctx.shadowBlur = 4;
       ctx.fillText('▼ YOU ▼', 0, 0);
-    } else {
-      // Bot short name tag
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
-      ctx.font = '800 11px "Fredoka", sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'bottom';
-      ctx.fillText(this.name.toUpperCase(), 0, 0);
     }
 
     ctx.restore();

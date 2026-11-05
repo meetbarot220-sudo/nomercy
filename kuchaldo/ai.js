@@ -119,8 +119,11 @@ class BotController {
       let nearestX = 900;
       let minPlatformDist = 99999;
       for (const plat of arena.platforms) {
-        const platCenterX = plat.x + plat.w / 2;
-        const dist = Math.hypot(b.x - platCenterX, b.y - plat.y);
+        const platX = plat.type === 'slope' ? Math.min(plat.x1, plat.x2) : plat.x;
+        const platW = plat.type === 'slope' ? Math.abs(plat.x2 - plat.x1) : plat.w;
+        const platY = plat.type === 'slope' ? (plat.y1 + plat.y2) / 2 : plat.y;
+        const platCenterX = platX + platW / 2;
+        const dist = Math.hypot(b.x - platCenterX, b.y - platY);
         if (dist < minPlatformDist) {
           minPlatformDist = dist;
           nearestX = platCenterX;
@@ -291,12 +294,25 @@ class BotController {
     const dy = this.target.y - b.y;
     const dx = this.target.x - b.x;
 
-    // 1. If on 2nd platform (high_center) and target is higher up (dy < -50), use the center jump pad!
-    if (b.currentPlatform && b.currentPlatform.id === 'high_center' && dy < -50) {
-      const padX = 900;
-      if (Math.abs(b.x - padX) > 12) {
-        b.move(Math.sign(padX - b.x), dt);
-        return true;
+    // 1. If on moving side platforms (mid_left / mid_right) and target is higher up, use side jump pads!
+    if (b.currentPlatform && b.currentPlatform.id === 'mid_left' && dy < -50) {
+      const pad = arena.springPads.find(p => p.platId === 'mid_left');
+      if (pad) {
+        const padCenterX = pad.x + pad.w / 2;
+        if (Math.abs(b.x - padCenterX) > 12) {
+          b.move(Math.sign(padCenterX - b.x), dt);
+          return true;
+        }
+      }
+    }
+    if (b.currentPlatform && b.currentPlatform.id === 'mid_right' && dy < -50) {
+      const pad = arena.springPads.find(p => p.platId === 'mid_right');
+      if (pad) {
+        const padCenterX = pad.x + pad.w / 2;
+        if (Math.abs(b.x - padCenterX) > 12) {
+          b.move(Math.sign(padCenterX - b.x), dt);
+          return true;
+        }
       }
     }
 
@@ -348,9 +364,27 @@ class BotController {
     const lookAheadDist = 28;
     const testX = fighter.x + dir * lookAheadDist;
 
+    const xMin = plat.type === 'slope' ? Math.min(plat.x1, plat.x2) : plat.x;
+    const xMax = plat.type === 'slope' ? Math.max(plat.x1, plat.x2) : plat.x + plat.w;
+
     // Check if testX falls beyond the current platform ends
-    if (testX < plat.x || testX > plat.x + plat.w) {
-      return true; // Edge ahead!
+    if (testX < xMin || testX > xMax) {
+      // Check if there is another connected walkable platform or sloped bridge ahead at testX
+      const hasSafeSurfaceAhead = arena.platforms.some(p => {
+        if (p === plat) return false;
+        if (p.type === 'slope') {
+          return testX >= Math.min(p.x1, p.x2) - 6 && testX <= Math.max(p.x1, p.x2) + 6;
+        }
+        const platY = p.y || 0;
+        const currentY = plat.type === 'slope' ? (plat.y1 + plat.y2) / 2 : plat.y;
+        return testX >= p.x - 6 && testX <= p.x + p.w + 6 && Math.abs(platY - currentY) <= 40;
+      });
+
+      if (hasSafeSurfaceAhead) {
+        return false; // Continuous walkable connection (e.g. main <-> bridge <-> side platform)
+      }
+
+      return true; // True perilous ledge ahead!
     }
     return false;
   }

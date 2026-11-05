@@ -13,46 +13,36 @@
   <div id="game-container">
     <canvas id="game-canvas"></canvas>
 
-    <!-- Top Match HUD (Responsive 3-Column: Player Left, Timer Center, Bots Right) -->
+    <!-- Top Match HUD (Simplified Layout: MY SCORE, TIME, TIME SURVIVED, Bot Count) -->
     <header id="hud" class="hud-layer">
-      <!-- TOP-LEFT: Player Information (Clean badge without damage percentage) -->
+      <!-- TOP-LEFT: MY SCORE -->
       <div class="hud-left">
-        <div class="player-hud-card" id="hud-player-card">
-          <span class="hud-avatar">👑</span>
-          <span class="hud-name">YOU <small>(RED)</small></span>
+        <div class="hud-score-card" id="hud-score-card">
+          <span class="hud-score-label">MY SCORE:</span>
+          <span class="hud-score-val" id="hud-my-score">0</span>
         </div>
       </div>
 
-      <!-- TOP-CENTER: Large Always-Centered Match Timer -->
+      <!-- TOP-CENTER: TIME (Remaining) and TIME SURVIVED -->
       <div class="hud-center">
-        <div class="match-timer-box" id="match-timer-container">
-          <span class="timer-icon">⏱</span>
-          <span id="match-timer">01:30</span>
+        <div class="hud-timers-row">
+          <div class="match-timer-box" id="match-timer-container">
+            <span class="timer-icon">⏱</span>
+            <span class="timer-prefix">TIME:</span>
+            <span id="match-timer">01:30</span>
+          </div>
+          <div class="survived-box" id="survived-container">
+            <span class="survived-prefix">TIME SURVIVED:</span>
+            <span id="hud-time-survived">00:00</span>
+          </div>
         </div>
       </div>
 
-      <!-- TOP-RIGHT: Remaining Bots & Quick Settings -->
+      <!-- TOP-RIGHT: Bot Count Indicator & Sound Controls -->
       <div class="hud-right">
-        <div class="bots-hud-box" id="bots-hud-box">
-          <div class="bots-count-pill" id="bots-count-pill">
-            <span class="bots-icon">🤖</span>
-            <span id="alive-count">BOTS: 3/3</span>
-          </div>
-          <!-- Mini Bot Status Indicators (Clean status dots and names) -->
-          <div class="bots-status-row" id="bots-status-row">
-            <div class="bot-status-item bot-blaze" id="card-dmg-bot_blaze" title="Blaze (Green)">
-              <span class="bot-dot dot-green"></span>
-              <span class="bot-short">BLAZE</span>
-            </div>
-            <div class="bot-status-item bot-aegis" id="card-dmg-bot_aegis" title="Aegis (Blue)">
-              <span class="bot-dot dot-blue"></span>
-              <span class="bot-short">AEGIS</span>
-            </div>
-            <div class="bot-status-item bot-wobble" id="card-dmg-bot_wobble" title="Wobble (Yellow)">
-              <span class="bot-dot dot-yellow"></span>
-              <span class="bot-short">WOBBLE</span>
-            </div>
-          </div>
+        <div class="bots-count-pill" id="bots-count-pill">
+          <span class="bots-icon">🤖</span>
+          <span id="alive-count">BOTS: 3/3</span>
         </div>
 
         <div class="hud-buttons-cluster">
@@ -72,75 +62,22 @@
       <span id="kill-text" class="kill-text">1 KILL</span>
     </div>
 
-    <!-- Match Over Modal -->
+    <!-- Match Over Modal (Simplified: Final Score & Time Survived only, No Menu Buttons) -->
     <div id="game-over-modal" class="modal-layer hidden">
       <div class="modal-card">
         <div class="trophy-badge" id="modal-trophy">🏆</div>
-        <h1 id="modal-title" class="modal-title">VICTORY!</h1>
-        <p id="modal-subtitle" class="modal-subtitle">You out-squished all rivals!</p>
+        <h1 id="modal-title" class="modal-title">MATCH COMPLETE</h1>
+        <p id="modal-subtitle" class="modal-subtitle">Match finished!</p>
 
         <div class="stats-grid" id="modal-stats">
-          <!-- Populated by JS -->
+          <!-- Populated by JS: Final Score & Time Survived -->
         </div>
       </div>
     </div>
 
-    <!-- Start / Title Screen Overlay -->
-    <div id="title-screen" class="modal-layer">
-      <div class="modal-card title-card">
-        <div class="game-logo">
-          <span class="logo-red">SQUISH</span>
-          <span class="logo-accent">BRAWL</span>
-        </div>
-        <p class="tagline">Knock all 3 AI bots off the arena! If you fall, you lose!</p>
-
-        <div class="character-preview-row">
-          <div class="preview-blob player-blob">
-            <div class="blob-crown">👑</div>
-            <div class="blob-tag">🔴 YOU (Red)</div>
-          </div>
-          <div class="vs-badge">VS</div>
-          <div class="preview-blob bot-blob-1">
-            <div class="blob-horns">⚡</div>
-            <div class="blob-tag">🟢 BLAZE (Green)</div>
-          </div>
-          <div class="preview-blob bot-blob-2">
-            <div class="blob-horns">🛡️</div>
-            <div class="blob-tag">🔵 AEGIS (Blue)</div>
-          </div>
-          <div class="preview-blob bot-blob-3">
-            <div class="blob-horns">🌀</div>
-            <div class="blob-tag">🟡 WOBBLE (Yellow)</div>
-          </div>
-        </div>
-
-        <div class="instructions-panel">
-          <div class="control-row">
-            <span class="control-label">Move:</span>
-            <span class="control-keys"><kbd>A</kbd> <kbd>D</kbd> or <kbd>◀</kbd> <kbd>▶</kbd></span>
-          </div>
-          <div class="control-row">
-            <span class="control-label">Jump / Double-Jump:</span>
-            <span class="control-keys"><kbd>W</kbd> or <kbd>SPACE</kbd></span>
-          </div>
-          <div class="control-row">
-            <span class="control-label">Punch:</span>
-            <span class="control-keys"><kbd>J</kbd> or <kbd>X</kbd> or <kbd>Left Click</kbd></span>
-          </div>
-          <div class="control-row">
-            <span class="control-label">Drop Platform:</span>
-            <span class="control-keys"><kbd>S</kbd> or <kbd>▼</kbd></span>
-          </div>
-          <div class="pro-tip">
-            💡 <strong>BRAWL TIP:</strong> Jump directly on opponent heads to bounce-stomp them! High damage = HUGE knockback!
-          </div>
-        </div>
-
-        <button id="btn-start" class="action-btn start-btn">
-          <span>START BRAWL</span>
-          <span class="key-hint">(ENTER or CLICK)</span>
-        </button>
-      </div>
+    <!-- Click / Tap Anywhere to Start Overlay (No starting menu) -->
+    <div id="tap-to-start-hint" class="tap-to-start-overlay">
+      <div class="start-prompt-pulse">CLICK OR TAP ANYWHERE TO START</div>
     </div>
 
     <!-- Mobile Touch Controls Layer (Automatically shown on mobile / touch devices, strictly hidden on PC) -->

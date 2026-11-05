@@ -46,7 +46,7 @@ const POWERUP_TYPES = {
     color: '#22c55e',
     aura: 'rgba(34, 197, 94, 0.45)',
     duration: 0.1, // instant consumable
-    desc: '-45% Knockback Damage!'
+    desc: 'Armor & Health Stabilizer!'
   }
 };
 

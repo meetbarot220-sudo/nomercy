@@ -84,17 +84,17 @@ html, body {
   pointer-events: auto;
 }
 
-/* TOP-LEFT: Player Information Card */
+/* TOP-LEFT: MY SCORE Card */
 .hud-left {
   display: flex;
   align-items: center;
   z-index: 2;
 }
 
-.player-hud-card {
-  background: rgba(18, 22, 36, 0.88);
-  border: 2px solid #ff2a4b;
-  box-shadow: 0 0 14px rgba(255, 42, 75, 0.4), 0 4px 12px rgba(0, 0, 0, 0.5);
+.hud-score-card {
+  background: rgba(18, 22, 36, 0.92);
+  border: 2px solid #ffde59;
+  box-shadow: 0 0 14px rgba(255, 222, 89, 0.4), 0 4px 12px rgba(0, 0, 0, 0.5);
   border-radius: 14px;
   padding: 6px 14px;
   display: flex;
@@ -103,32 +103,24 @@ html, body {
   backdrop-filter: blur(8px);
 }
 
-.player-hud-card .hud-avatar {
-  font-size: 20px;
-  line-height: 1;
-}
-
-.player-hud-card .hud-name {
+.hud-score-label {
   font-size: 13px;
   font-weight: 900;
   letter-spacing: 0.8px;
-  color: #ff5e78;
+  color: #ffde59;
   text-transform: uppercase;
   white-space: nowrap;
 }
 
-.player-hud-card .hud-name small {
-  font-size: 10px;
-  opacity: 0.85;
+.hud-score-val {
+  font-size: 17px;
+  font-weight: 900;
+  color: #ffffff;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
-.player-hud-card.eliminated {
-  opacity: 0.35;
-  filter: grayscale(80%);
-  border-color: rgba(255, 255, 255, 0.1);
-}
-
-/* TOP-CENTER: Large Always-Centered Timer */
+/* TOP-CENTER: Large Always-Centered Timers Row */
 .hud-center {
   position: absolute;
   left: 50%;
@@ -141,17 +133,23 @@ html, body {
   z-index: 10;
 }
 
-.match-timer-box {
-  background: rgba(18, 22, 36, 0.92);
-  border: 2px solid rgba(255, 222, 89, 0.45);
-  border-radius: 16px;
-  padding: 6px 16px;
+.hud-timers-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+}
+
+.match-timer-box {
+  background: rgba(18, 22, 36, 0.92);
+  border: 2px solid rgba(255, 222, 89, 0.5);
+  border-radius: 16px;
+  padding: 6px 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-weight: 900;
-  font-size: clamp(15px, 3.5vw, 22px);
-  letter-spacing: 1.5px;
+  font-size: clamp(14px, 3.2vw, 20px);
+  letter-spacing: 1.2px;
   font-variant-numeric: tabular-nums;
   color: #ffde59;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5), 0 0 10px rgba(255, 222, 89, 0.25);
@@ -159,8 +157,38 @@ html, body {
   white-space: nowrap;
 }
 
+.timer-prefix {
+  font-size: 12px;
+  color: #ffde59;
+  letter-spacing: 0.8px;
+}
+
 .timer-icon {
-  font-size: clamp(14px, 3vw, 18px);
+  font-size: clamp(13px, 2.8vw, 17px);
+}
+
+.survived-box {
+  background: rgba(18, 22, 36, 0.92);
+  border: 2px solid rgba(56, 189, 248, 0.5);
+  border-radius: 16px;
+  padding: 6px 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 900;
+  font-size: clamp(14px, 3.2vw, 20px);
+  letter-spacing: 1.2px;
+  font-variant-numeric: tabular-nums;
+  color: #38bdf8;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5), 0 0 10px rgba(56, 189, 248, 0.25);
+  backdrop-filter: blur(8px);
+  white-space: nowrap;
+}
+
+.survived-prefix {
+  font-size: 12px;
+  color: #38bdf8;
+  letter-spacing: 0.8px;
 }
 
 /* TOP-RIGHT: Bots Remaining & Compact Controls */
@@ -347,6 +375,50 @@ html, body {
   0% { transform: scale(0.4) rotate(-5deg); opacity: 0; }
   60% { transform: scale(1.15) rotate(2deg); opacity: 1; }
   100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+
+/* ============================================================
+   CLICK OR TAP ANYWHERE TO START OVERLAY
+   ============================================================ */
+.tap-to-start-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  cursor: pointer;
+  background: rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(2px);
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity 0.3s ease;
+}
+
+.tap-to-start-overlay.hidden {
+  opacity: 0;
+  pointer-events: none;
+  display: none !important;
+}
+
+.start-prompt-pulse {
+  background: rgba(18, 22, 36, 0.92);
+  border: 3px solid #ffde59;
+  border-radius: 20px;
+  padding: 16px 32px;
+  font-family: 'Fredoka', sans-serif;
+  font-size: clamp(16px, 4vw, 24px);
+  font-weight: 900;
+  letter-spacing: 1.5px;
+  color: #ffde59;
+  text-align: center;
+  box-shadow: 0 0 25px rgba(255, 222, 89, 0.5), 0 8px 32px rgba(0, 0, 0, 0.6);
+  animation: promptPulse 1.4s ease-in-out infinite alternate;
+}
+
+@keyframes promptPulse {
+  0% { transform: scale(0.96); box-shadow: 0 0 15px rgba(255, 222, 89, 0.35); }
+  100% { transform: scale(1.04); box-shadow: 0 0 32px rgba(255, 222, 89, 0.7); }
 }
 
 /* ============================================================
@@ -560,11 +632,63 @@ html, body {
   opacity: 0.85;
 }
 
-/* Game Over Card Details */
-.trophy-badge {
-  font-size: 56px;
-  margin-bottom: 6px;
-  animation: bounceTrophy 1.2s infinite alternate;
+/* ============================================================
+   VICTORY & GAME OVER RESULT MODAL
+   Centered exactly vertically and horizontally on any viewport
+   with balanced card proportions and comfortable spacing
+   ============================================================ */
+
+#game-over-modal.modal-layer {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(7, 9, 16, 0.78);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 1200;
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+#game-over-modal.modal-layer.hidden {
+  opacity: 0;
+  pointer-events: none;
+  display: none !important;
+}
+
+#game-over-modal .modal-card {
+  background: linear-gradient(145deg, #181d2e 0%, #101321 100%);
+  border: 2px solid rgba(255, 255, 255, 0.16);
+  border-radius: 24px;
+  padding: 32px 28px 28px 28px;
+  max-width: 440px;
+  width: min(440px, 90vw);
+  text-align: center;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7), 0 0 35px var(--red-glow);
+  position: relative;
+  margin: auto;
+  animation: modalScaleCenter 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+@keyframes modalScaleCenter {
+  0% { transform: scale(0.92); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+#game-over-modal .trophy-badge {
+  font-size: 54px;
+  line-height: 1;
+  margin-bottom: 8px;
+  animation: bounceTrophy 1.4s ease-in-out infinite alternate;
 }
 
 @keyframes bounceTrophy {
@@ -572,47 +696,57 @@ html, body {
   to { transform: translateY(-8px); }
 }
 
-.modal-title {
-  font-size: 38px;
+#game-over-modal .modal-title {
+  font-size: clamp(26px, 5.5vw, 34px);
   font-weight: 900;
   letter-spacing: 1.5px;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
+  line-height: 1.15;
 }
 
-.modal-subtitle {
+#game-over-modal .modal-subtitle {
   color: #94a3b8;
-  font-size: 15px;
-  margin-bottom: 20px;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+  margin-bottom: 22px;
+  max-width: 360px;
 }
 
-.stats-grid {
+#game-over-modal .stats-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-  margin-bottom: 24px;
-}
-
-.modal-card > .stats-grid:last-child {
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  width: 100%;
   margin-bottom: 0;
 }
 
-.stat-item {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
-  padding: 10px 8px;
+#game-over-modal .stat-item {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1.5px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  padding: 12px 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 72px;
 }
 
-.stat-val {
-  font-size: 22px;
+#game-over-modal .stat-val {
+  font-size: clamp(22px, 5vw, 26px);
   font-weight: 900;
   color: #ffde59;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
 }
 
-.stat-lbl {
+#game-over-modal .stat-lbl {
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 800;
   color: #94a3b8;
+  letter-spacing: 0.8px;
   text-transform: uppercase;
 }
 
@@ -811,26 +945,32 @@ body.game-over .mobile-controls-layer,
     padding-right: max(8px, env(safe-area-inset-right, 8px));
   }
 
-  .player-hud-card {
-    padding: 4px 8px;
+  .hud-score-card {
+    padding: 4px 10px;
     gap: 6px;
   }
 
-  .player-hud-card .hud-avatar {
-    font-size: 16px;
+  .hud-score-label {
+    font-size: 11px;
   }
 
-  .player-hud-card .hud-name {
-    font-size: 9px;
+  .hud-score-val {
+    font-size: 14px;
   }
 
-  .match-timer-box {
-    padding: 4px 12px;
+  .match-timer-box, .survived-box {
+    padding: 4px 10px;
     border-radius: 12px;
+    font-size: 13px;
+    gap: 4px;
+  }
+
+  .timer-prefix, .survived-prefix {
+    font-size: 10px;
   }
 
   .bots-status-row {
-    display: none; /* Hide mini pips on narrow portrait to keep header pristine */
+    display: none !important;
   }
 
   .bots-count-pill {
@@ -844,26 +984,10 @@ body.game-over .mobile-controls-layer,
     font-size: 14px;
   }
 
-  .modal-card {
-    padding: 20px 16px;
-    max-width: 92vw;
-  }
-
-  .game-logo {
-    font-size: clamp(32px, 8vw, 44px);
-  }
-
-  .instructions-panel {
-    display: none;
-  }
-
-  .character-preview-row {
-    gap: 6px;
-  }
-
-  .preview-blob {
-    min-width: 60px;
-    padding: 6px;
+  #game-over-modal .modal-card {
+    padding: 24px 20px 22px 20px;
+    max-width: min(390px, 90vw);
+    border-radius: 20px;
   }
 }
 
@@ -874,28 +998,32 @@ body.game-over .mobile-controls-layer,
     padding-right: max(4px, env(safe-area-inset-right, 4px));
   }
 
-  .player-hud-card {
+  .hud-score-card {
     padding: 2px 6px;
     gap: 4px;
   }
 
-  .player-hud-card .hud-avatar {
-    font-size: 14px;
+  .hud-score-label {
+    font-size: 9px;
   }
 
-  .player-hud-card .hud-name {
-    font-size: 8px;
+  .hud-score-val {
+    font-size: 12px;
   }
 
-  .match-timer-box {
-    padding: 2px 8px;
-    font-size: 13px;
-    border-radius: 10px;
-    gap: 4px;
+  .match-timer-box, .survived-box {
+    padding: 2px 6px;
+    font-size: 11px;
+    border-radius: 8px;
+    gap: 3px;
+  }
+
+  .timer-prefix, .survived-prefix {
+    font-size: 9px;
   }
 
   .timer-icon {
-    font-size: 11px;
+    font-size: 10px;
   }
 
   .bots-count-pill {
@@ -905,6 +1033,40 @@ body.game-over .mobile-controls-layer,
 
   .hud-buttons-cluster {
     display: none; /* Hide sound/fullscreen buttons on <480px portrait to protect timer clearance */
+  }
+
+  #game-over-modal .modal-card {
+    padding: 20px 16px 18px 16px;
+    max-width: min(330px, 92vw);
+    border-radius: 18px;
+  }
+
+  #game-over-modal .trophy-badge {
+    font-size: 42px;
+    margin-bottom: 4px;
+  }
+
+  #game-over-modal .modal-title {
+    font-size: 22px;
+    margin-bottom: 3px;
+  }
+
+  #game-over-modal .modal-subtitle {
+    font-size: 12px;
+    margin-bottom: 14px;
+  }
+
+  #game-over-modal .stat-item {
+    min-height: 60px;
+    padding: 8px 6px;
+  }
+
+  #game-over-modal .stat-val {
+    font-size: 20px;
+  }
+
+  #game-over-modal .stat-lbl {
+    font-size: 9.5px;
   }
 }
 
@@ -916,25 +1078,29 @@ body.game-over .mobile-controls-layer,
     padding-right: max(10px, env(safe-area-inset-right, 10px));
   }
 
-  .player-hud-card {
+  .hud-score-card {
     padding: 3px 8px;
     border-radius: 10px;
     gap: 6px;
   }
 
-  .player-hud-card .hud-avatar {
-    font-size: 16px;
+  .hud-score-label {
+    font-size: 10px;
   }
 
-  .player-hud-card .hud-name {
-    font-size: 9px;
+  .hud-score-val {
+    font-size: 13px;
   }
 
-  .match-timer-box {
-    top: max(4px, env(safe-area-inset-top, 4px));
-    padding: 3px 12px;
+  .match-timer-box, .survived-box {
+    padding: 3px 10px;
     border-radius: 12px;
-    font-size: 15px;
+    font-size: 13px;
+    gap: 4px;
+  }
+
+  .timer-prefix, .survived-prefix {
+    font-size: 10px;
   }
 
   .bots-count-pill {
@@ -944,18 +1110,7 @@ body.game-over .mobile-controls-layer,
   }
 
   .bots-status-row {
-    display: flex;
-    gap: 3px;
-  }
-
-  .bot-status-item {
-    padding: 1px 4px;
-    font-size: 9px;
-    gap: 2px;
-  }
-
-  .bot-status-item .bot-short {
-    display: none; /* Hide bot names on compact landscape, show dot + % to keep spacing generous */
+    display: none !important;
   }
 
   .hud-buttons-cluster {
@@ -969,11 +1124,44 @@ body.game-over .mobile-controls-layer,
     border-radius: 7px;
   }
 
-  .modal-card {
-    padding: 12px 18px;
-    max-height: 94vh;
-    overflow-y: auto;
+  #game-over-modal .modal-card {
+    padding: 14px 20px 12px 20px;
+    max-width: min(380px, 88vw);
+    border-radius: 18px;
   }
+
+  #game-over-modal .trophy-badge {
+    font-size: 34px;
+    margin-bottom: 2px;
+  }
+
+  #game-over-modal .modal-title {
+    font-size: 22px;
+    margin-bottom: 2px;
+  }
+
+  #game-over-modal .modal-subtitle {
+    font-size: 12px;
+    margin-bottom: 10px;
+  }
+
+  #game-over-modal .stats-grid {
+    gap: 8px;
+  }
+
+  #game-over-modal .stat-item {
+    min-height: 52px;
+    padding: 6px 10px;
+  }
+
+  #game-over-modal .stat-val {
+    font-size: 20px;
+  }
+
+  #game-over-modal .stat-lbl {
+    font-size: 9.5px;
+  }
+}
 
   .game-logo {
     font-size: 26px;

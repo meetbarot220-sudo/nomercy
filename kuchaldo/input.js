@@ -98,6 +98,9 @@ class InputController {
       if (window.soundEngine) window.soundEngine.ensureContext();
 
       if (e.button === 0) {
+        if (window.gameEngine && (window.gameEngine.state === 'TITLE' || window.gameEngine.state === 'WAITING_START')) {
+          return; // Do NOT trigger attack on the starting click!
+        }
         this.setVirtualAction('attack', true);
       }
     });
