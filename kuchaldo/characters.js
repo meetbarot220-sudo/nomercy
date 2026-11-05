@@ -128,10 +128,13 @@ class Fighter {
     this.walkCycle = 0;
 
     // Match statistics
+    this.fistScore = 0;
+    this.squeezeScore = 0;
     this.score = 0;
     this.kills = 0;
     this.damageDealt = 0;
     this.survivalTime = 0;
+    this.squeezeDebounceTimer = 0;
   }
 
   reset(x, y) {
@@ -153,10 +156,13 @@ class Fighter {
     this.punchBlockTimer = 0;
     this.activeBuff = null;
     this.hasShield = false;
+    this.fistScore = 0;
+    this.squeezeScore = 0;
     this.score = 0;
     this.kills = 0;
     this.damageDealt = 0;
     this.survivalTime = 0;
+    this.squeezeDebounceTimer = 0;
   }
 
   // --- ACTIONS ---
@@ -227,6 +233,8 @@ class Fighter {
   }
 
   dropDown() {
+    // Player drop-down disabled as per specifications; bots retain AI traversal
+    if (!this.isBot) return;
     if (this.onGround && this.currentPlatform && this.currentPlatform.type === 'jumpthrough') {
       this.isDroppingDown = true;
       this.dropDownTimer = 0.28; // Ignore collision for 0.28s
@@ -344,8 +352,25 @@ class Fighter {
   stomp(victim) {
     if (!this.isAlive || !victim.isAlive) return;
 
+    // Squeeze debounce: ensure each squeeze is counted only once
+    if (victim.squeezeDebounceTimer > 0) return;
+    victim.squeezeDebounceTimer = 0.45;
+
     // SQUISH: Punching power blocked for exactly 3 seconds (can still move and jump normally, NO stun visuals)
     victim.punchBlockTimer = 3.0;
+
+    // Award exactly 50 points for every successful squeeze directly to score
+    if (!this.isBot) {
+      this.squeezeScore = (this.squeezeScore || 0) + 50;
+      this.score = (this.fistScore || 0) + this.squeezeScore;
+      window.particles.spawnCombatText(victim.x, victim.y - 45, '+50 SQUEEZE', '#38bdf8', 22);
+      if (window.gameEngine) {
+        window.gameEngine.updateHUD();
+      }
+    } else {
+      this.squeezeScore = (this.squeezeScore || 0) + 50;
+      this.score = (this.fistScore || 0) + this.squeezeScore;
+    }
 
     // Stomper bounces up high
     this.vy = -680;
@@ -365,7 +390,7 @@ class Fighter {
     window.gameEngine.triggerHitStop(40);
     window.soundEngine.playStomp();
     window.particles.spawnShockwave(victim.x, victim.y - victim.radius * 2, 50, '#ff3344', 0.25);
-    window.particles.spawnCombatText(victim.x, victim.y - 50, 'SQUISH!', '#ff3344', 24);
+    window.particles.spawnCombatText(victim.x, victim.y - 65, 'SQUISH!', '#ff3344', 24);
     window.gameCamera.shake(8);
 
     victim.lastAttacker = this;
@@ -384,6 +409,7 @@ class Fighter {
     if (this.invulnerableTimer > 0) this.invulnerableTimer -= dt;
     if (this.attackCooldown > 0) this.attackCooldown -= dt;
     if (this.punchBlockTimer > 0) this.punchBlockTimer -= dt;
+    if (this.squeezeDebounceTimer > 0) this.squeezeDebounceTimer -= dt;
 
     if (this.dropDownTimer > 0) {
       this.dropDownTimer -= dt;
@@ -484,14 +510,14 @@ class Fighter {
         const xMax = Math.max(plat.x1, plat.x2);
 
         // Foot horizontal bounds check with margin for smooth crossing
-        if (footX >= xMin - 4 && footX <= xMax + 4) {
+        if (footX >= xMin - 8 && footX <= xMax + 8) {
           const t = Math.max(0, Math.min(1, (footX - plat.x1) / (plat.x2 - plat.x1)));
           const surfaceY = plat.y1 + t * (plat.y2 - plat.y1);
 
           // Check if already on this slope, transitioning from connected platforms, or landing
           const isOnSlope = (this.currentPlatform === plat && this.onGround);
-          const isSteppingOn = (this.onGround && Math.abs(footY - surfaceY) <= 18);
-          const isLanding = (this.vy >= 0 && footY >= surfaceY - 8 && footY <= surfaceY + 24);
+          const isSteppingOn = (this.onGround && Math.abs(footY - surfaceY) <= 24);
+          const isLanding = (this.vy >= 0 && footY >= surfaceY - 8 && footY <= surfaceY + 28);
 
           if (isOnSlope || isSteppingOn || isLanding) {
             this.y = surfaceY;
@@ -546,7 +572,7 @@ class Fighter {
         const bottom = plat.y + plat.h;
 
         // Feet on top (connected platforms meet the slope bridges flush at exact edge)
-        const isBridgeConnected = (plat.id === 'main' || plat.id === 'side_left' || plat.id === 'side_right');
+        const isBridgeConnected = (plat.id === 'main' || plat.id === 'low_left' || plat.id === 'low_right');
         const tol = isBridgeConnected ? 0 : 10;
 
         if (this.vy >= 0 &&
@@ -587,8 +613,8 @@ class Fighter {
         // Side walls collision
         const bodyCenterY = this.y - this.radius;
         if (bodyCenterY >= top + 12 && bodyCenterY < bottom) {
-          const hasLeftBridge = (plat.id === 'main' || plat.id === 'side_right');
-          const hasRightBridge = (plat.id === 'main' || plat.id === 'side_left');
+          const hasLeftBridge = (plat.id === 'main' || plat.id === 'low_right');
+          const hasRightBridge = (plat.id === 'main' || plat.id === 'low_left');
 
           if (!hasLeftBridge && this.vx > 0 && this.x + this.radius >= left && this.x < left + 15) {
             this.x = left - this.radius;

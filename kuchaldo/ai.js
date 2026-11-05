@@ -111,7 +111,7 @@ class BotController {
     const b = this.bot;
 
     // Check if falling below stage platforms
-    const isBelowMainStage = b.y > 830;
+    const isBelowMainStage = b.y > 850;
     const isPastEdge = b.x < 100 || b.x > 1700;
 
     if (isBelowMainStage || isPastEdge) {
@@ -294,9 +294,9 @@ class BotController {
     const dy = this.target.y - b.y;
     const dx = this.target.x - b.x;
 
-    // 1. If on moving side platforms (mid_left / mid_right) and target is higher up, use side jump pads!
-    if (b.currentPlatform && b.currentPlatform.id === 'mid_left' && dy < -50) {
-      const pad = arena.springPads.find(p => p.platId === 'mid_left');
+    // 1. If on side platforms (mid_left / mid_right / low_left / low_right) and target is higher up, use jump pads!
+    if (b.currentPlatform && (b.currentPlatform.id === 'mid_left' || b.currentPlatform.id === 'low_left') && dy < -50) {
+      const pad = arena.springPads.find(p => p.platId === b.currentPlatform.id);
       if (pad) {
         const padCenterX = pad.x + pad.w / 2;
         if (Math.abs(b.x - padCenterX) > 12) {
@@ -305,8 +305,8 @@ class BotController {
         }
       }
     }
-    if (b.currentPlatform && b.currentPlatform.id === 'mid_right' && dy < -50) {
-      const pad = arena.springPads.find(p => p.platId === 'mid_right');
+    if (b.currentPlatform && (b.currentPlatform.id === 'mid_right' || b.currentPlatform.id === 'low_right') && dy < -50) {
+      const pad = arena.springPads.find(p => p.platId === b.currentPlatform.id);
       if (pad) {
         const padCenterX = pad.x + pad.w / 2;
         if (Math.abs(b.x - padCenterX) > 12) {

@@ -126,9 +126,6 @@ class InputController {
     if (code === 'KeyD' || code === 'ArrowRight') {
       this.setVirtualAction('right', isDown);
     }
-    if (code === 'KeyS' || code === 'ArrowDown') {
-      this.setVirtualAction('down', isDown);
-    }
 
     // Jump
     if (code === 'KeyW' || code === 'ArrowUp' || code === 'Space') {

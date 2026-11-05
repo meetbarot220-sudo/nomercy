@@ -62,16 +62,35 @@
       <span id="kill-text" class="kill-text">1 KILL</span>
     </div>
 
-    <!-- Match Over Modal (Simplified: Final Score & Time Survived only, No Menu Buttons) -->
+    <!-- Match Over Modal (Score Breakdown & Final Result) -->
     <div id="game-over-modal" class="modal-layer hidden">
       <div class="modal-card">
-        <div class="trophy-badge" id="modal-trophy">🏆</div>
-        <h1 id="modal-title" class="modal-title">MATCH COMPLETE</h1>
-        <p id="modal-subtitle" class="modal-subtitle">Match finished!</p>
+        <div class="trophy-badge" id="modal-trophy">👑</div>
 
-        <div class="stats-grid" id="modal-stats">
-          <!-- Populated by JS: Final Score & Time Survived -->
+        <!-- Score Breakdown Lines (Fist Score, Squeeze Score, Total Score) -->
+        <div class="score-breakdown-card" id="modal-breakdown">
+          <div class="breakdown-line">
+            <span class="breakdown-label">FIST SCORE</span>
+            <span class="breakdown-sep">=</span>
+            <span class="breakdown-val" id="modal-fist-score">0</span>
+          </div>
+          <div class="breakdown-line">
+            <span class="breakdown-label">SQUEEZE SCORE</span>
+            <span class="breakdown-sep">=</span>
+            <span class="breakdown-val" id="modal-squeeze-score">0</span>
+          </div>
+          <div class="breakdown-divider"></div>
+          <div class="breakdown-line total-line">
+            <span class="breakdown-label">TOTAL SCORE</span>
+            <span class="breakdown-sep">=</span>
+            <span class="breakdown-val" id="modal-total-score">0</span>
+          </div>
         </div>
+
+        <!-- Final Result: Displayed AFTER score breakdown -->
+        <h1 id="modal-title" class="modal-title">YOU WIN</h1>
+        <p id="modal-subtitle" class="modal-subtitle"></p>
+        <div class="survival-pill" id="modal-survival">TIME SURVIVED: 0s</div>
       </div>
     </div>
 

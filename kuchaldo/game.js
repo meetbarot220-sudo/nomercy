@@ -54,6 +54,10 @@ class GameEngine {
     this.initFighters();
     this.handleResize();
 
+    // Mountain pixel-art background image
+    this.bgImage = new Image();
+    this.bgImage.src = 'mountain_bg.png';
+
     window.addEventListener('resize', () => this.handleResize());
     if (window.visualViewport) {
       window.visualViewport.addEventListener('resize', () => this.handleResize());
@@ -105,8 +109,8 @@ class GameEngine {
       accessory: 'horns',
       personality: 'defensive',
       themeKey: 'bot_aegis',
-      x: 380,
-      y: 600,
+      x: 900,
+      y: 520,
       facing: 1
     });
 
@@ -118,8 +122,8 @@ class GameEngine {
       accessory: 'propeller',
       personality: 'chaotic',
       themeKey: 'bot_wobble',
-      x: 1420,
-      y: 600,
+      x: 900,
+      y: 340,
       facing: -1
     });
 
@@ -130,7 +134,90 @@ class GameEngine {
       new BotController(bot3)
     ];
 
+    this.pendingSpawnBots = [];
     this.buildFightersHUD();
+  }
+
+  // --- SAFE BOT SPAWN LOCATION FINDER ---
+  // Ensures bots NEVER spawn on the player, never overlap the player,
+  // never spawn on or inside jumping pads, and only spawn on solid safe platforms.
+  findSafeSpawnLocation(fighter, placedFighters = []) {
+    const candidateSpots = [
+      { x: 900, y: 520, platId: 'high_center' },     // High ground center
+      { x: 780, y: 520, platId: 'high_center' },     // High ground left
+      { x: 1020, y: 520, platId: 'high_center' },    // High ground right
+      { x: 900, y: 340, platId: 'apex' },            // Apex middle top platform
+      { x: 1100, y: 720, platId: 'main' },           // Main stage right
+      { x: 650, y: 720, platId: 'main' },            // Main stage left
+      { x: 820, y: 720, platId: 'main' },            // Main stage mid-left
+      { x: 980, y: 720, platId: 'main' },            // Main stage mid-right
+      { x: 420, y: 340, platId: 'top_moving_left' }, // Top moving left
+      { x: 1200, y: 340, platId: 'top_moving_right' }, // Top moving right
+      { x: 275, y: 600, platId: 'mid_left' },        // Mid-left blue platform (pad is at 357.5-407.5; 275 is well clear)
+      { x: 1515, y: 600, platId: 'mid_right' },      // Mid-right blue platform (pad is at 1392.5-1442.5; 1515 is well clear)
+      { x: 300, y: 820, platId: 'low_left' },        // Low-left island (pad is at 180-230; 300 is well clear)
+      { x: 1500, y: 820, platId: 'low_right' }       // Low-right island (pad is at 1570-1620; 1500 is well clear)
+    ];
+
+    const springPads = (window.arena && window.arena.springPads) ? window.arena.springPads : [];
+    const minPlayerDistance = 180;
+    const minOtherFighterDistance = 110;
+    const padSafetyMargin = 45;
+
+    for (const spot of candidateSpots) {
+      // 1. Check against all jumping pads (never on top of, inside, or near jumping pads)
+      let nearPad = false;
+      for (const pad of springPads) {
+        const padLeft = pad.x - padSafetyMargin;
+        const padRight = pad.x + pad.w + padSafetyMargin;
+        const padTop = pad.y - 30;
+        const padBottom = pad.y + pad.h + 20;
+
+        if (spot.x >= padLeft && spot.x <= padRight && spot.y >= padTop && spot.y <= padBottom) {
+          nearPad = true;
+          break;
+        }
+      }
+      if (nearPad) continue;
+
+      // 2. Check player position & safe distance (never on player or overlapping player)
+      if (this.player && this.player.isAlive && fighter !== this.player) {
+        const distToPlayer = Math.hypot(spot.x - this.player.x, spot.y - this.player.y);
+        if (distToPlayer < minPlayerDistance) {
+          continue;
+        }
+      }
+
+      // 3. Check distance to already placed/spawned fighters (never overlap)
+      let tooCloseToOther = false;
+      for (const other of placedFighters) {
+        if (!other || !other.isAlive || other === fighter) continue;
+        const dist = Math.hypot(spot.x - other.x, spot.y - other.y);
+        if (dist < minOtherFighterDistance) {
+          tooCloseToOther = true;
+          break;
+        }
+      }
+      if (tooCloseToOther) continue;
+
+      // 4. Verify candidate is on a valid platform
+      if (window.arena && window.arena.platforms) {
+        const plat = window.arena.platforms.find(p => p.id === spot.platId);
+        if (plat) {
+          const platLeft = plat.type === 'slope' ? Math.min(plat.x1, plat.x2) : plat.x;
+          const platRight = plat.type === 'slope' ? Math.max(plat.x1, plat.x2) : plat.x + plat.w;
+          if (spot.x < platLeft + 15 || spot.x > platRight - 15) {
+            continue;
+          }
+        }
+      }
+
+      // Safe location found!
+      return { x: spot.x, y: spot.y, facing: spot.x < 900 ? 1 : -1 };
+    }
+
+    // No safe location available at this moment -> return null to delay spawning
+    return null;
   }
 
   // --- RESIZE CANVAS & CAMERA ---
@@ -283,20 +370,28 @@ class GameEngine {
     // Reset systems
     window.particles.reset();
     window.powerUpManager.reset();
+    this.pendingSpawnBots = [];
 
-    // Reset Fighters to spawn points
-    const spawns = [
-      { x: 700, y: 720 },
-      { x: 1100, y: 720 },
-      { x: 380, y: 600 },
-      { x: 1420, y: 600 }
-    ];
+    // 1. Reset Player to safe main stage spawn
+    this.player.reset(750, 720);
+    this.player.facing = 1;
 
-    this.fighters.forEach((f, idx) => {
-      const sp = spawns[idx];
-      f.reset(sp.x, sp.y);
-      f.facing = sp.x < 900 ? 1 : -1;
-    });
+    // 2. Spawn Bots safely (checks player distance, jump pads, no overlaps, solid platform)
+    const placedFighters = [this.player];
+    const bots = this.fighters.filter(f => f.isBot);
+
+    for (const bot of bots) {
+      const safeSpot = this.findSafeSpawnLocation(bot, placedFighters);
+      if (safeSpot) {
+        bot.reset(safeSpot.x, safeSpot.y);
+        bot.facing = safeSpot.facing;
+        placedFighters.push(bot);
+      } else {
+        // Delay spawning until safe location opens up
+        bot.isAlive = false;
+        this.pendingSpawnBots.push(bot);
+      }
+    }
 
     this.matchTime = this.matchDuration;
     this.countdownTimer = 3.0; // 3 -> 2 -> 1 -> BRAWL!
@@ -385,58 +480,52 @@ class GameEngine {
     const trophy = document.getElementById('modal-trophy');
     const title = document.getElementById('modal-title');
     const subtitle = document.getElementById('modal-subtitle');
-    const statsGrid = document.getElementById('modal-stats');
+    const fistScoreEl = document.getElementById('modal-fist-score');
+    const squeezeScoreEl = document.getElementById('modal-squeeze-score');
+    const totalScoreEl = document.getElementById('modal-total-score');
+    const survivalEl = document.getElementById('modal-survival');
 
-    const finalScore = this.player ? (this.player.score || 0) : 0;
+    const fistScore = this.player ? (this.player.fistScore || 0) : 0;
+    const squeezeScore = this.player ? (this.player.squeezeScore || 0) : 0;
+    const totalScore = fistScore + squeezeScore;
     const finalSurvival = Math.round(this.player ? this.player.survivalTime : 0);
 
+    // Populate score breakdown: FIST SCORE, SQUEEZE SCORE, TOTAL SCORE
+    if (fistScoreEl) fistScoreEl.textContent = fistScore;
+    if (squeezeScoreEl) squeezeScoreEl.textContent = squeezeScore;
+    if (totalScoreEl) totalScoreEl.textContent = totalScore;
+    if (survivalEl) survivalEl.textContent = `TIME SURVIVED: ${finalSurvival}s`;
+
+    // Determine final WIN / LOSE result (displayed AFTER score breakdown)
+    let isWin = false;
     if (outcome === 'PLAYER_WON') {
-      trophy.textContent = '👑';
-      title.textContent = 'VICTORY!';
-      title.style.color = '#ffde59';
-      subtitle.textContent = `All AI bots were eliminated! Final Score: ${finalScore}!`;
+      isWin = true;
+      if (trophy) trophy.textContent = '👑';
+      if (subtitle) subtitle.textContent = `All AI bots were eliminated!`;
       window.soundEngine.playVictory();
     } else if (outcome === 'TIMEOUT') {
-      // 90-second match timer reached zero normally: determine result based on player's final score!
-      if (finalScore >= 500) {
-        trophy.textContent = '🏆';
-        title.textContent = 'HIGH SCORE VICTORY!';
-        title.style.color = '#ffde59';
-        subtitle.textContent = `Time's up! Masterful combat performance with ${finalScore} score!`;
-        window.soundEngine.playVictory();
-      } else if (finalScore > 0) {
-        trophy.textContent = '⭐';
-        title.textContent = 'MATCH COMPLETE';
-        title.style.color = '#38bdf8';
-        subtitle.textContent = `Time's up! You survived the full match with ${finalScore} score!`;
+      isWin = totalScore > 0;
+      if (isWin) {
+        if (trophy) trophy.textContent = '🏆';
+        if (subtitle) subtitle.textContent = `Time's up! Victory with ${totalScore} points!`;
         window.soundEngine.playVictory();
       } else {
-        trophy.textContent = '⏱️';
-        title.textContent = 'TIME EXPIRED';
-        title.style.color = '#94a3b8';
-        subtitle.textContent = `Time's up! Survived full 90s. Land punches to score points!`;
-        window.soundEngine.playVictory();
+        if (trophy) trophy.textContent = '⏱️';
+        if (subtitle) subtitle.textContent = "Time's up! Survived full 90s, but scored 0 points.";
+        window.soundEngine.playElimination();
       }
     } else {
-      // Player actually fell out of the arena
-      trophy.textContent = '💀';
-      title.textContent = 'YOU FELL OUT!';
-      title.style.color = '#ff3344';
-      subtitle.textContent = 'You fell from the platform arena! Better luck next round!';
+      // outcome === 'PLAYER_FALL_OUT'
+      isWin = false;
+      if (trophy) trophy.textContent = '💀';
+      if (subtitle) subtitle.textContent = 'You fell from the platform arena!';
       window.soundEngine.playElimination();
     }
 
-    // Populate player match statistics: ONLY Final Score and Time Survived
-    statsGrid.innerHTML = `
-      <div class="stat-item">
-        <div class="stat-val">${finalScore}</div>
-        <div class="stat-lbl">Final Score</div>
-      </div>
-      <div class="stat-item">
-        <div class="stat-val">${finalSurvival}s</div>
-        <div class="stat-lbl">Time Survived</div>
-      </div>
-    `;
+    if (title) {
+      title.textContent = isWin ? 'YOU WIN' : 'YOU LOSE';
+      title.style.color = isWin ? '#ffde59' : '#ff3344';
+    }
 
     modal.classList.remove('hidden');
   }
@@ -550,10 +639,6 @@ class GameEngine {
         this.player.jump();
       }
 
-      if (window.input.isDown('down')) {
-        this.player.dropDown();
-      }
-
       if (window.input.isJustPressed('attack') || (window.input.isDown('attack') && this.player.attackCooldown <= 0)) {
         this.player.attack();
       }
@@ -562,6 +647,23 @@ class GameEngine {
     // 7. Bot AI Update (Frozen during countdown, strictly active only during PLAYING)
     if (this.state === 'PLAYING') {
       this.botControllers.forEach(ctrl => ctrl.update(dt, this.fighters, window.arena));
+    }
+
+    // 7b. Process any bots with delayed safe spawning
+    if (this.pendingSpawnBots && this.pendingSpawnBots.length > 0) {
+      const remainingPending = [];
+      const placed = this.fighters.filter(f => f.isAlive);
+      for (const bot of this.pendingSpawnBots) {
+        const spot = this.findSafeSpawnLocation(bot, placed);
+        if (spot) {
+          bot.reset(spot.x, spot.y);
+          bot.facing = spot.facing;
+          placed.push(bot);
+        } else {
+          remainingPending.push(bot);
+        }
+      }
+      this.pendingSpawnBots = remainingPending;
     }
 
     // 8. Update Fighters Physics
@@ -638,9 +740,10 @@ class GameEngine {
             const hitSuccess = f2.takeHit(f1, baseDamage, baseKnockback, angle);
             // Every successful fist punch that lands on an opponent = +100 score!
             if (hitSuccess !== false) {
-              f1.score = (f1.score || 0) + 100;
+              f1.fistScore = (f1.fistScore || 0) + 100;
+              f1.score = f1.fistScore + (f1.squeezeScore || 0);
               if (!f1.isBot) {
-                window.particles.spawnCombatText(f2.x, f2.y - 28, '+100', '#ffde59', 24);
+                window.particles.spawnCombatText(f2.x, f2.y - 28, '+100 FIST', '#ffde59', 24);
                 this.updateHUD();
               }
             }
@@ -659,13 +762,27 @@ class GameEngine {
     // Clear Canvas
     ctx.clearRect(0, 0, w, h);
 
+    // 1. Render Full-Screen Mountain Pixel-Art Wallpaper
+    // Proportional cover, no distortion or blur, crisp pixelated rendering
+    if (this.bgImage && this.bgImage.complete && this.bgImage.naturalWidth > 0) {
+      ctx.imageSmoothingEnabled = false;
+      const imgW = this.bgImage.naturalWidth;
+      const imgH = this.bgImage.naturalHeight;
+      const scale = Math.max(w / imgW, h / imgH);
+      const drawW = imgW * scale;
+      const drawH = imgH * scale;
+      const drawX = (w - drawW) / 2;
+      const drawY = h - drawH; // bottom-anchored so dark forest and mountains sit behind stage
+      ctx.drawImage(this.bgImage, drawX, drawY, drawW, drawH);
+    }
+
     // Apply smooth dynamic camera transformation
     window.gameCamera.begin(ctx);
 
-    // 1. Background Arena & Stadium Spotlights
+    // 2. Under-Platform Ancient Foundations & Hanging Vines
     window.arena.renderBackground(ctx);
 
-    // 2. Platforms & Spring Pads
+    // 3. Platforms & Spring Pads
     window.arena.renderPlatforms(ctx);
 
     // 3. Floating Power-up Items

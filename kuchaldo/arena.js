@@ -67,58 +67,52 @@ class Arena {
         vy: 0
       },
 
-      // 6. Left Sloped Bridge Ramp (Connects main left edge at y:720 downward to side_left at y:756)
+      // 6. Left Sloped Ramp (Clean straight diagonal slope connecting main left edge at y:720 downward to low_left at y:820)
       {
         id: 'bridge_left',
         type: 'slope',
         style: 'bridge',
-        x1: 420,
-        y1: 756,
+        x1: 340,
+        y1: 820,
         x2: 550,
         y2: 720,
-        x: 420,
+        x: 340,
         y: 720,
-        w: 130,
-        h: 36,
-        thickness: 20,
+        w: 210,
+        h: 100,
+        thickness: 22,
         vx: 0,
         vy: 0
       },
 
-      // 7. Small Brown Platform - LEFT (Smoothly connected to left sloped bridge)
-      { id: 'side_left', x: 260, y: 756, w: 160, h: 22, type: 'solid', style: 'garden_wood', vx: 0, vy: 0 },
-
-      // 8. Right Sloped Bridge Ramp (Connects main right edge at y:720 downward to side_right at y:756)
+      // 7. Right Sloped Ramp (Clean straight diagonal slope connecting main right edge at y:720 downward to low_right at y:820)
       {
         id: 'bridge_right',
         type: 'slope',
         style: 'bridge',
         x1: 1250,
         y1: 720,
-        x2: 1380,
-        y2: 756,
+        x2: 1460,
+        y2: 820,
         x: 1250,
         y: 720,
-        w: 130,
-        h: 36,
-        thickness: 20,
+        w: 210,
+        h: 100,
+        thickness: 22,
         vx: 0,
         vy: 0
       },
 
-      // 9. Small Brown Platform - RIGHT (Smoothly connected to right sloped bridge)
-      { id: 'side_right', x: 1380, y: 756, w: 160, h: 22, type: 'solid', style: 'garden_wood', vx: 0, vy: 0 },
-
-      // 10. Lower Blue Platform - LEFT (Stationary, with Jump Pad)
+      // 8. Lower Blue Platform - LEFT (Stationary, with Jump Pad)
       { id: 'mid_left', x: 230, y: 600, w: 220, h: 22, type: 'jumpthrough', style: 'moving', vx: 0, vy: 0 },
 
-      // 11. Lower Blue Platform - RIGHT (Stationary, with Jump Pad)
+      // 9. Lower Blue Platform - RIGHT (Stationary, with Jump Pad)
       { id: 'mid_right', x: 1350, y: 600, w: 220, h: 22, type: 'jumpthrough', style: 'moving', vx: 0, vy: 0 },
 
-      // 12. Left Low Recovery Island (Solid narrow)
+      // 10. Left Low Recovery Island (Solid narrow)
       { id: 'low_left', x: 120, y: 820, w: 220, h: 36, type: 'solid', style: 'island' },
 
-      // 13. Right Low Recovery Island (Solid narrow)
+      // 11. Right Low Recovery Island (Solid narrow)
       { id: 'low_right', x: 1460, y: 820, w: 220, h: 36, type: 'solid', style: 'island' }
     ];
 
@@ -460,149 +454,8 @@ class Arena {
   renderBackground(ctx) {
     ctx.save();
 
-    const cam = window.gameCamera;
-    const camX = cam ? cam.x : 900;
-    const camY = cam ? cam.y : 600;
-
-    // Helper to calculate parallax coordinate
-    // k = 0 (fixed to screen), k = 1.0 (moves 1:1 with world platforms)
-    const px = (worldX, k) => 900 + (worldX - 900) + (camX - 900) * (1 - k);
-    const py = (worldY, k) => 600 + (worldY - 600) + (camY - 600) * (1 - k);
-
     // ------------------------------------------------------------
-    // 1. BRIGHT BLUE SKY & ARCHED SKY BANDS (Parallax k = 0.02)
-    // ------------------------------------------------------------
-    const skyLeft = px(-1400, 0.02);
-    const skyTop = py(-1000, 0.02);
-    const skyWidth = 4600;
-    const skyHeight = 2600;
-
-    // Rich bright cartoon sky gradient
-    const skyGrad = ctx.createLinearGradient(0, skyTop, 0, skyTop + skyHeight * 0.75);
-    skyGrad.addColorStop(0.0, '#3fa7f5'); // Clean azure blue
-    skyGrad.addColorStop(0.35, '#56b4f8'); // Cheerful light cerulean
-    skyGrad.addColorStop(0.65, '#84cbfb'); // Soft sky blue
-    skyGrad.addColorStop(0.85, '#b8e3fd'); // Light horizon blue
-    skyGrad.addColorStop(1.0, '#d9f0fe'); // Horizon glow
-
-    ctx.fillStyle = skyGrad;
-    ctx.fillRect(skyLeft, skyTop, skyWidth, skyHeight);
-
-    // Subtle curved cartoon sky bands (Inspired by reference image)
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.12)';
-    ctx.beginPath();
-    ctx.ellipse(px(900, 0.02), py(-150, 0.02), 2200, 520, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
-    ctx.beginPath();
-    ctx.ellipse(px(900, 0.02), py(-50, 0.02), 2400, 480, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    // ------------------------------------------------------------
-    // 2. GIANT SOFT BILLOWY CARTOON CLOUDS (Parallax k = 0.06)
-    // ------------------------------------------------------------
-    for (const c of this.clouds) {
-      const cx = px(c.x, 0.06);
-      const cy = py(c.y, 0.06);
-      this.drawCartoonCloud(ctx, cx, cy, c.scale, c.puffs);
-    }
-
-    // ------------------------------------------------------------
-    // 3. DISTANT CARTOON MOUNTAINS / BLUE-PERIWINKLE RIDGES (Parallax k = 0.12)
-    // ------------------------------------------------------------
-    for (const m of this.distantMountains) {
-      const mx = px(m.cx, 0.12);
-      const my = py(m.cy, 0.12);
-
-      const mtnGrad = ctx.createLinearGradient(0, my - m.h * 0.4, 0, my + m.h * 0.6);
-      mtnGrad.addColorStop(0.0, '#b8d8f0'); // Soft light periwinkle
-      mtnGrad.addColorStop(0.6, '#9cc3e3');
-      mtnGrad.addColorStop(1.0, '#86b0d4');
-
-      ctx.fillStyle = mtnGrad;
-      ctx.beginPath();
-      ctx.ellipse(mx, my + 60, m.w * 0.5, m.h * 0.5, 0, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
-    // ------------------------------------------------------------
-    // 4. MID-DISTANCE ROLLING CARTOON HILLS (Parallax k = 0.22)
-    // ------------------------------------------------------------
-    // Solid valley ground beneath hills so no gaps appear
-    const valleyMid = ctx.createLinearGradient(0, py(560, 0.22), 0, py(1400, 0.22));
-    valleyMid.addColorStop(0.0, '#68b993');
-    valleyMid.addColorStop(0.5, '#4e9976');
-    valleyMid.addColorStop(1.0, '#367256');
-    ctx.fillStyle = valleyMid;
-    ctx.fillRect(px(-1200, 0.22), py(620, 0.22), 4400, 950);
-
-    for (const hill of this.midHills) {
-      const hx = px(hill.cx, 0.22);
-      const hy = py(hill.cy, 0.22);
-
-      const hillGrad = ctx.createRadialGradient(hx, hy - 40, hill.ry * 0.25, hx, hy + 60, hill.ry * 1.1);
-      hillGrad.addColorStop(0.0, '#8ad4b2'); // Soft pastel sunlit crest
-      hillGrad.addColorStop(0.6, hill.color);
-      hillGrad.addColorStop(1.0, '#4e9875');
-
-      ctx.fillStyle = hillGrad;
-      ctx.beginPath();
-      ctx.ellipse(hx, hy + 120, hill.rx, hill.ry, 0, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
-    // Small stylized cartoon lollipop trees on mid-hill crests (Reference inspired)
-    for (const tree of this.cartoonTrees) {
-      const tx = px(tree.x, 0.22);
-      const ty = py(tree.y, 0.22);
-      this.drawLollipopTree(ctx, tx, ty, tree.trunkH, tree.r, tree.trunkColor, tree.leafColor, tree.highColor);
-    }
-
-    // ------------------------------------------------------------
-    // 5. NEARER CARTOON ROLLING HILLS (Parallax k = 0.38)
-    // ------------------------------------------------------------
-    const valleyFore = ctx.createLinearGradient(0, py(650, 0.38), 0, py(1450, 0.38));
-    valleyFore.addColorStop(0.0, '#38a96d');
-    valleyFore.addColorStop(0.4, '#2d8b58');
-    valleyFore.addColorStop(1.0, '#1d603c');
-    ctx.fillStyle = valleyFore;
-    ctx.fillRect(px(-1200, 0.38), py(700, 0.38), 4400, 950);
-
-    for (const hill of this.foreHills) {
-      const hx = px(hill.cx, 0.38);
-      const hy = py(hill.cy, 0.38);
-
-      const hillGrad = ctx.createRadialGradient(hx, hy - 30, hill.ry * 0.25, hx, hy + 50, hill.ry * 1.15);
-      hillGrad.addColorStop(0.0, '#59cb8f'); // Fresh green crest
-      hillGrad.addColorStop(0.6, hill.color);
-      hillGrad.addColorStop(1.0, '#27794e');
-
-      ctx.fillStyle = hillGrad;
-      ctx.beginPath();
-      ctx.ellipse(hx, hy + 120, hill.rx, hill.ry, 0, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
-    // Stylized cartoon 3-blade grass tufts on hill slopes (Reference inspired)
-    for (const g of this.grassTufts) {
-      const gx = px(g.x, 0.38);
-      const gy = py(g.y, 0.38);
-      this.drawGrassTuft(ctx, gx, gy, g.h, g.color);
-    }
-
-    // Smooth cartoon pebble clusters on hill slopes (Reference inspired)
-    for (const p of this.pebbles) {
-      const pX = px(p.x, 0.38);
-      const pY = py(p.y, 0.38);
-      ctx.fillStyle = p.color;
-      ctx.beginPath();
-      ctx.ellipse(pX, pY, p.r * 1.3, p.r * 0.75, -0.2, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
-    // ------------------------------------------------------------
-    // 6. UNDER-PLATFORM ANCIENT SUPPORTS & HANGING VINES (Parallax k = 1.0)
+    // UNDER-PLATFORM ANCIENT SUPPORTS & HANGING VINES (World layer)
     // ------------------------------------------------------------
     for (const plat of this.platforms) {
       if (plat.style === 'main' || plat.style === 'island') {
@@ -924,15 +777,15 @@ class Arena {
 
       } else if (style === 'bridge') {
         // ------------------------------------------------------------
-        // SLOPED BRIDGE RAMPS: Gentle Wood Walkway connecting Central Stage to Side Platforms
+        // CLEAN STRAIGHT DIAGONAL SLOPES: Smoothly connecting Central Stage to Side Platforms
         // ------------------------------------------------------------
         const x1 = plat.x1;
         const y1 = plat.y1;
         const x2 = plat.x2;
         const y2 = plat.y2;
-        const thickness = plat.thickness || 20;
+        const thickness = plat.thickness || 22;
 
-        // 1. Polished Cedar Plank Ramp Body
+        // 1. Polished Cedar Plank Ramp Body with vertical flush mating edges
         const rampGrad = ctx.createLinearGradient(x1, Math.min(y1, y2), x2, Math.max(y1, y2) + thickness);
         rampGrad.addColorStop(0.0, '#78350f'); // Warm polished cedar
         rampGrad.addColorStop(1.0, '#451a03');
@@ -965,7 +818,7 @@ class Arena {
         ctx.stroke();
 
         // 3. Wooden Cross-Plank Notches & Brass Rivets along the Slope
-        const steps = 6;
+        const steps = 8;
         for (let i = 1; i <= steps; i++) {
           const t = i / (steps + 1);
           const px = x1 + t * (x2 - x1);
@@ -985,16 +838,6 @@ class Arena {
           ctx.arc(px, py + thickness / 2, 2.5, 0, Math.PI * 2);
           ctx.fill();
         }
-
-        // 4. Sturdy Diagonal Wood Support Strut Beneath Ramp
-        const midX = (x1 + x2) / 2;
-        const midY = (y1 + y2) / 2 + thickness;
-        ctx.strokeStyle = '#451a03';
-        ctx.lineWidth = 4;
-        ctx.beginPath();
-        ctx.moveTo(midX, midY);
-        ctx.lineTo(midX, midY + 18);
-        ctx.stroke();
 
       } else {
         // ------------------------------------------------------------
