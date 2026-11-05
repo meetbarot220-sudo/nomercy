@@ -23,12 +23,11 @@
         </div>
       </div>
 
-      <!-- TOP-CENTER: TIME (Remaining) and TIME SURVIVED -->
+      <!-- TOP-CENTER: Match Timer and TIME SURVIVED -->
       <div class="hud-center">
         <div class="hud-timers-row">
           <div class="match-timer-box" id="match-timer-container">
             <span class="timer-icon">⏱</span>
-            <span class="timer-prefix">TIME:</span>
             <span id="match-timer">01:30</span>
           </div>
           <div class="survived-box" id="survived-container">
@@ -67,7 +66,7 @@
       <div class="modal-card">
         <div class="trophy-badge" id="modal-trophy">👑</div>
 
-        <!-- Score Breakdown Lines (Fist Score, Squeeze Score, Total Score) -->
+        <!-- Score Breakdown Lines (Fist Score, Squeeze Score, Kill Score, Total Score) -->
         <div class="score-breakdown-card" id="modal-breakdown">
           <div class="breakdown-line">
             <span class="breakdown-label">FIST SCORE</span>
@@ -78,6 +77,11 @@
             <span class="breakdown-label">SQUEEZE SCORE</span>
             <span class="breakdown-sep">=</span>
             <span class="breakdown-val" id="modal-squeeze-score">0</span>
+          </div>
+          <div class="breakdown-line">
+            <span class="breakdown-label">KILL SCORE</span>
+            <span class="breakdown-sep">=</span>
+            <span class="breakdown-val" id="modal-kill-score">0</span>
           </div>
           <div class="breakdown-divider"></div>
           <div class="breakdown-line total-line">

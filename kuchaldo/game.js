@@ -139,24 +139,24 @@ class GameEngine {
   }
 
   // --- SAFE BOT SPAWN LOCATION FINDER ---
-  // Ensures bots NEVER spawn on the player, never overlap the player,
-  // never spawn on or inside jumping pads, and only spawn on solid safe platforms.
+  // Ensures bots spawn upright, solidly ON TOP of assigned platforms,
+  // never underneath/inside, never near jump pads, and never overlapping other fighters.
   findSafeSpawnLocation(fighter, placedFighters = []) {
-    const candidateSpots = [
-      { x: 900, y: 520, platId: 'high_center' },     // High ground center
-      { x: 780, y: 520, platId: 'high_center' },     // High ground left
-      { x: 1020, y: 520, platId: 'high_center' },    // High ground right
-      { x: 900, y: 340, platId: 'apex' },            // Apex middle top platform
-      { x: 1100, y: 720, platId: 'main' },           // Main stage right
-      { x: 650, y: 720, platId: 'main' },            // Main stage left
-      { x: 820, y: 720, platId: 'main' },            // Main stage mid-left
-      { x: 980, y: 720, platId: 'main' },            // Main stage mid-right
-      { x: 420, y: 340, platId: 'top_moving_left' }, // Top moving left
-      { x: 1200, y: 340, platId: 'top_moving_right' }, // Top moving right
-      { x: 275, y: 600, platId: 'mid_left' },        // Mid-left blue platform (pad is at 357.5-407.5; 275 is well clear)
-      { x: 1515, y: 600, platId: 'mid_right' },      // Mid-right blue platform (pad is at 1392.5-1442.5; 1515 is well clear)
-      { x: 300, y: 820, platId: 'low_left' },        // Low-left island (pad is at 180-230; 300 is well clear)
-      { x: 1500, y: 820, platId: 'low_right' }       // Low-right island (pad is at 1570-1620; 1500 is well clear)
+    const candidatePlatSlots = [
+      { platId: 'high_center', relX: 0.5 },     // High ground center
+      { platId: 'high_center', relX: 0.22 },    // High ground left
+      { platId: 'high_center', relX: 0.78 },    // High ground right
+      { platId: 'apex', relX: 0.5 },            // Apex middle top platform
+      { platId: 'mid_left', relX: 0.5 },        // Mid-left blue platform
+      { platId: 'mid_right', relX: 0.5 },       // Mid-right blue platform
+      { platId: 'main', relX: 0.38 },           // Main stage mid-left
+      { platId: 'main', relX: 0.62 },           // Main stage mid-right
+      { platId: 'main', relX: 0.22 },           // Main stage left (clear of pad)
+      { platId: 'main', relX: 0.78 },           // Main stage right (clear of pad)
+      { platId: 'top_moving_left', relX: 0.5 }, // Top moving left
+      { platId: 'top_moving_right', relX: 0.5 },// Top moving right
+      { platId: 'low_left', relX: 0.65 },       // Low-left island (clear of recovery pad)
+      { platId: 'low_right', relX: 0.35 }       // Low-right island (clear of recovery pad)
     ];
 
     const springPads = (window.arena && window.arena.springPads) ? window.arena.springPads : [];
@@ -164,35 +164,43 @@ class GameEngine {
     const minOtherFighterDistance = 110;
     const padSafetyMargin = 45;
 
-    for (const spot of candidateSpots) {
-      // 1. Check against all jumping pads (never on top of, inside, or near jumping pads)
+    for (const slot of candidatePlatSlots) {
+      if (!window.arena || !window.arena.platforms) continue;
+      const plat = window.arena.platforms.find(p => p.id === slot.platId);
+      if (!plat) continue;
+
+      // Calculate exact surface position on top of platform
+      const spotX = plat.x + plat.w * slot.relX;
+      const spotY = plat.y; // Exactly on platform top surface
+
+      // 1. Check against all jumping pads
       let nearPad = false;
       for (const pad of springPads) {
         const padLeft = pad.x - padSafetyMargin;
         const padRight = pad.x + pad.w + padSafetyMargin;
-        const padTop = pad.y - 30;
-        const padBottom = pad.y + pad.h + 20;
+        const padTop = pad.y - 35;
+        const padBottom = pad.y + pad.h + 25;
 
-        if (spot.x >= padLeft && spot.x <= padRight && spot.y >= padTop && spot.y <= padBottom) {
+        if (spotX >= padLeft && spotX <= padRight && spotY >= padTop && spotY <= padBottom) {
           nearPad = true;
           break;
         }
       }
       if (nearPad) continue;
 
-      // 2. Check player position & safe distance (never on player or overlapping player)
+      // 2. Check player position & safe distance
       if (this.player && this.player.isAlive && fighter !== this.player) {
-        const distToPlayer = Math.hypot(spot.x - this.player.x, spot.y - this.player.y);
+        const distToPlayer = Math.hypot(spotX - this.player.x, spotY - this.player.y);
         if (distToPlayer < minPlayerDistance) {
           continue;
         }
       }
 
-      // 3. Check distance to already placed/spawned fighters (never overlap)
+      // 3. Check distance to already placed/spawned fighters
       let tooCloseToOther = false;
       for (const other of placedFighters) {
         if (!other || !other.isAlive || other === fighter) continue;
-        const dist = Math.hypot(spot.x - other.x, spot.y - other.y);
+        const dist = Math.hypot(spotX - other.x, spotY - other.y);
         if (dist < minOtherFighterDistance) {
           tooCloseToOther = true;
           break;
@@ -200,23 +208,10 @@ class GameEngine {
       }
       if (tooCloseToOther) continue;
 
-      // 4. Verify candidate is on a valid platform
-      if (window.arena && window.arena.platforms) {
-        const plat = window.arena.platforms.find(p => p.id === spot.platId);
-        if (plat) {
-          const platLeft = plat.type === 'slope' ? Math.min(plat.x1, plat.x2) : plat.x;
-          const platRight = plat.type === 'slope' ? Math.max(plat.x1, plat.x2) : plat.x + plat.w;
-          if (spot.x < platLeft + 15 || spot.x > platRight - 15) {
-            continue;
-          }
-        }
-      }
-
-      // Safe location found!
-      return { x: spot.x, y: spot.y, facing: spot.x < 900 ? 1 : -1 };
+      // Safe location found directly on platform surface!
+      return { x: spotX, y: spotY, facing: spotX < 900 ? 1 : -1, plat: plat };
     }
 
-    // No safe location available at this moment -> return null to delay spawning
     return null;
   }
 
@@ -373,8 +368,13 @@ class GameEngine {
     this.pendingSpawnBots = [];
 
     // 1. Reset Player to safe main stage spawn
-    this.player.reset(750, 720);
+    const mainPlat = window.arena.platforms.find(p => p.id === 'main');
+    this.player.reset(750, mainPlat ? mainPlat.y : 720);
     this.player.facing = 1;
+    this.player.onGround = true;
+    this.player.currentPlatform = mainPlat;
+    this.player.vx = 0;
+    this.player.vy = 0;
 
     // 2. Spawn Bots safely (checks player distance, jump pads, no overlaps, solid platform)
     const placedFighters = [this.player];
@@ -385,6 +385,10 @@ class GameEngine {
       if (safeSpot) {
         bot.reset(safeSpot.x, safeSpot.y);
         bot.facing = safeSpot.facing;
+        bot.onGround = true;
+        bot.currentPlatform = safeSpot.plat || null;
+        bot.vx = 0;
+        bot.vy = 0;
         placedFighters.push(bot);
       } else {
         // Delay spawning until safe location opens up
@@ -412,13 +416,31 @@ class GameEngine {
 
   // --- FIGHTER ELIMINATION HANDLER ---
   onFighterEliminated(fighter) {
-    this.updateHUD();
-
     // 1. IF PLAYER DIES: IMMEDIATELY END MATCH (Player fell out of arena)
     if (!fighter.isBot) {
+      this.updateHUD();
       this.endMatch('PLAYER_FALL_OUT');
       return;
     }
+
+    // 2. A BOT DIED: Award +500 score for every bot eliminated (exactly once per bot)
+    if (fighter.isBot && !fighter.killPointsAwarded) {
+      fighter.killPointsAwarded = true;
+      if (this.player) {
+        this.player.killScore = (this.player.killScore || 0) + 500;
+        this.player.score = (this.player.fistScore || 0) + (this.player.squeezeScore || 0) + this.player.killScore;
+        window.particles.spawnCombatText(
+          this.player.x,
+          this.player.y - 55,
+          '+500 KILL!',
+          '#ffde59',
+          28
+        );
+      }
+    }
+
+    // Update HUD immediately so the +500 points show up right away
+    this.updateHUD();
 
     // Check if player scored this kill -> Show temporary "1 KILL", "2 KILLS", etc.
     if (fighter.lastAttacker && !fighter.lastAttacker.isBot) {
@@ -427,7 +449,7 @@ class GameEngine {
       this.showKillNotification(killText);
     }
 
-    // 2. A BOT DIED: Check if all 3 bots are eliminated
+    // 3. Check if all 3 bots are eliminated
     const aliveBots = this.fighters.filter(f => f.isBot && f.isAlive);
     const playerAlive = this.player && this.player.isAlive;
 
@@ -482,17 +504,20 @@ class GameEngine {
     const subtitle = document.getElementById('modal-subtitle');
     const fistScoreEl = document.getElementById('modal-fist-score');
     const squeezeScoreEl = document.getElementById('modal-squeeze-score');
+    const killScoreEl = document.getElementById('modal-kill-score');
     const totalScoreEl = document.getElementById('modal-total-score');
     const survivalEl = document.getElementById('modal-survival');
 
     const fistScore = this.player ? (this.player.fistScore || 0) : 0;
     const squeezeScore = this.player ? (this.player.squeezeScore || 0) : 0;
-    const totalScore = fistScore + squeezeScore;
+    const killScore = this.player ? (this.player.killScore || 0) : 0;
+    const totalScore = fistScore + squeezeScore + killScore;
     const finalSurvival = Math.round(this.player ? this.player.survivalTime : 0);
 
-    // Populate score breakdown: FIST SCORE, SQUEEZE SCORE, TOTAL SCORE
+    // Populate score breakdown: FIST SCORE, SQUEEZE SCORE, KILL SCORE, TOTAL SCORE
     if (fistScoreEl) fistScoreEl.textContent = fistScore;
     if (squeezeScoreEl) squeezeScoreEl.textContent = squeezeScore;
+    if (killScoreEl) killScoreEl.textContent = killScore;
     if (totalScoreEl) totalScoreEl.textContent = totalScore;
     if (survivalEl) survivalEl.textContent = `TIME SURVIVED: ${finalSurvival}s`;
 
@@ -658,6 +683,10 @@ class GameEngine {
         if (spot) {
           bot.reset(spot.x, spot.y);
           bot.facing = spot.facing;
+          bot.onGround = true;
+          bot.currentPlatform = spot.plat || null;
+          bot.vx = 0;
+          bot.vy = 0;
           placed.push(bot);
         } else {
           remainingPending.push(bot);
@@ -668,10 +697,19 @@ class GameEngine {
 
     // 8. Update Fighters Physics
     if (this.state === 'COUNTDOWN') {
-      // Keep all fighters completely stationary during countdown
+      // Keep all fighters completely stationary, upright and solidly on their platforms
       this.fighters.forEach(f => {
+        if (f.currentPlatform) {
+          f.y = f.currentPlatform.y;
+          f.onGround = true;
+          if (f.currentPlatform.vx) {
+            f.x += f.currentPlatform.vx * dt;
+          }
+        }
         f.vx = 0;
         f.vy = 0;
+        f.scaleX = 1.0;
+        f.scaleY = 1.0;
       });
     } else {
       this.fighters.forEach(f => f.update(dt, window.arena));
@@ -741,7 +779,7 @@ class GameEngine {
             // Every successful fist punch that lands on an opponent = +100 score!
             if (hitSuccess !== false) {
               f1.fistScore = (f1.fistScore || 0) + 100;
-              f1.score = f1.fistScore + (f1.squeezeScore || 0);
+              f1.score = f1.fistScore + (f1.squeezeScore || 0) + (f1.killScore || 0);
               if (!f1.isBot) {
                 window.particles.spawnCombatText(f2.x, f2.y - 28, '+100 FIST', '#ffde59', 24);
                 this.updateHUD();

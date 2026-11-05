@@ -190,9 +190,13 @@ class BotController {
     if (dy < -45 && (b.onGround || b.jumpsRemaining > 0)) {
       // Target is higher up -> jump
       b.jump();
-    } else if (dy > 65 && b.onGround && b.currentPlatform && b.currentPlatform.type === 'jumpthrough') {
-      // Target is below on lower platform -> drop down
-      b.dropDown();
+    } else if (dy > 65 && b.onGround && b.currentPlatform) {
+      // Target is below on lower platform -> walk toward platform edge to descend naturally
+      const plat = b.currentPlatform;
+      const leftDist = Math.abs(b.x - plat.x);
+      const rightDist = Math.abs(b.x - (plat.x + plat.w));
+      const edgeDir = dx !== 0 ? Math.sign(dx) : (leftDist < rightDist ? -1 : 1);
+      b.move(edgeDir, dt);
     }
   }
 
@@ -209,7 +213,6 @@ class BotController {
 
       b.move(pDir, dt);
       if (pDy < -40 && b.onGround) b.jump();
-      if (pDy > 50 && b.onGround) b.dropDown();
       return;
     }
 
@@ -257,8 +260,6 @@ class BotController {
       // Random spontaneous actions
       if (Math.random() < 0.35 && b.onGround) {
         b.jump();
-      } else if (Math.random() < 0.25) {
-        b.dropDown();
       }
     }
 
@@ -294,8 +295,8 @@ class BotController {
     const dy = this.target.y - b.y;
     const dx = this.target.x - b.x;
 
-    // 1. If on side platforms (mid_left / mid_right / low_left / low_right) and target is higher up, use jump pads!
-    if (b.currentPlatform && (b.currentPlatform.id === 'mid_left' || b.currentPlatform.id === 'low_left') && dy < -50) {
+    // 1. If on low islands and target is higher up, use recovery jump pads!
+    if (b.currentPlatform && (b.currentPlatform.id === 'low_left' || b.currentPlatform.id === 'low_right') && dy < -50) {
       const pad = arena.springPads.find(p => p.platId === b.currentPlatform.id);
       if (pad) {
         const padCenterX = pad.x + pad.w / 2;
@@ -305,11 +306,14 @@ class BotController {
         }
       }
     }
-    if (b.currentPlatform && (b.currentPlatform.id === 'mid_right' || b.currentPlatform.id === 'low_right') && dy < -50) {
-      const pad = arena.springPads.find(p => p.platId === b.currentPlatform.id);
+
+    // 1b. If on main stage and target is higher up (on upper platforms), use main jump pads!
+    if (b.currentPlatform && b.currentPlatform.id === 'main' && dy < -70) {
+      const targetPadId = dx < 0 ? 'spring_main_left' : 'spring_main_right';
+      const pad = arena.springPads.find(p => p.id === targetPadId);
       if (pad) {
         const padCenterX = pad.x + pad.w / 2;
-        if (Math.abs(b.x - padCenterX) > 12) {
+        if (Math.abs(b.x - padCenterX) > 14) {
           b.move(Math.sign(padCenterX - b.x), dt);
           return true;
         }

@@ -130,6 +130,7 @@ class Fighter {
     // Match statistics
     this.fistScore = 0;
     this.squeezeScore = 0;
+    this.killScore = 0;
     this.score = 0;
     this.kills = 0;
     this.damageDealt = 0;
@@ -158,8 +159,10 @@ class Fighter {
     this.hasShield = false;
     this.fistScore = 0;
     this.squeezeScore = 0;
+    this.killScore = 0;
     this.score = 0;
     this.kills = 0;
+    this.killPointsAwarded = false;
     this.damageDealt = 0;
     this.survivalTime = 0;
     this.squeezeDebounceTimer = 0;
@@ -233,16 +236,9 @@ class Fighter {
   }
 
   dropDown() {
-    // Player drop-down disabled as per specifications; bots retain AI traversal
-    if (!this.isBot) return;
-    if (this.onGround && this.currentPlatform && this.currentPlatform.type === 'jumpthrough') {
-      this.isDroppingDown = true;
-      this.dropDownTimer = 0.28; // Ignore collision for 0.28s
-      this.onGround = false;
-      this.currentPlatform = null;
-      this.y += 4;
-      this.vy = 80;
-    }
+    // Platform drop-through completely disabled for all characters (both player and bots)
+    // To descend, characters must physically walk off the edge of the platform
+    return;
   }
 
   // Dash removed as per specifications
@@ -362,14 +358,14 @@ class Fighter {
     // Award exactly 50 points for every successful squeeze directly to score
     if (!this.isBot) {
       this.squeezeScore = (this.squeezeScore || 0) + 50;
-      this.score = (this.fistScore || 0) + this.squeezeScore;
+      this.score = (this.fistScore || 0) + this.squeezeScore + (this.killScore || 0);
       window.particles.spawnCombatText(victim.x, victim.y - 45, '+50 SQUEEZE', '#38bdf8', 22);
       if (window.gameEngine) {
         window.gameEngine.updateHUD();
       }
     } else {
       this.squeezeScore = (this.squeezeScore || 0) + 50;
-      this.score = (this.fistScore || 0) + this.squeezeScore;
+      this.score = (this.fistScore || 0) + this.squeezeScore + (this.killScore || 0);
     }
 
     // Stomper bounces up high
@@ -456,11 +452,12 @@ class Fighter {
     this.vy = Math.max(-1400, Math.min(1300, this.vy));
 
     // Position integration
+    const prevY = this.y;
     this.x += this.vx * dt;
     this.y += this.vy * dt;
 
-    // 3. Platform Collisions
-    this.resolvePlatformCollisions(arena);
+    // 3. Platform Collisions (Solid from above, zero downward drop-through)
+    this.resolvePlatformCollisions(arena, dt, prevY);
 
     // 4. Spring Pad Bounce Check
     arena.checkSpringPad(this);
@@ -495,8 +492,8 @@ class Fighter {
     }
   }
 
-  // --- PLATFORM COLLISION RESOLUTION ---
-  resolvePlatformCollisions(arena) {
+  // --- PLATFORM COLLISION RESOLUTION (Solid from above, zero drop-through) ---
+  resolvePlatformCollisions(arena, dt = 1/60, prevY = this.y) {
     const prevOnGround = this.onGround;
     let groundedThisFrame = false;
 
@@ -517,7 +514,10 @@ class Fighter {
           // Check if already on this slope, transitioning from connected platforms, or landing
           const isOnSlope = (this.currentPlatform === plat && this.onGround);
           const isSteppingOn = (this.onGround && Math.abs(footY - surfaceY) <= 24);
-          const isLanding = (this.vy >= 0 && footY >= surfaceY - 8 && footY <= surfaceY + 28);
+          const isLanding = (this.vy >= 0 && (
+            (prevY <= surfaceY + 4 && footY >= surfaceY - 6) ||
+            (footY >= surfaceY - 8 && footY <= surfaceY + 28)
+          ));
 
           if (isOnSlope || isSteppingOn || isLanding) {
             this.y = surfaceY;
@@ -539,48 +539,38 @@ class Fighter {
         continue;
       }
 
-      if (plat.type === 'jumpthrough') {
-        if (this.isDroppingDown) continue; // ignore jumpthrough when pressing S/down
+      // Horizontal platform bounds (works for both solid and jumpthrough)
+      const platLeft = plat.x;
+      const platRight = plat.x + plat.w;
+      const platTop = plat.y;
+      const platBottom = plat.y + (plat.h || 20);
 
-        // Only land when falling downward through top surface
-        if (this.vy >= 0 &&
-            footX >= plat.x - 12 &&
-            footX <= plat.x + plat.w + 12 &&
-            footY >= plat.y - 2 &&
-            footY <= plat.y + 18) {
-          this.y = plat.y;
+      // Edge tolerance
+      const isBridgeConnected = (plat.id === 'main' || plat.id === 'low_left' || plat.id === 'low_right');
+      const horizTol = isBridgeConnected ? 2 : 12;
+
+      // 1. If currently standing on this platform, stay solidly locked to its surface while feet are on platform
+      const isCurrentlyStanding = (this.onGround && this.currentPlatform === plat);
+      if (isCurrentlyStanding && this.vy >= 0) {
+        if (footX >= platLeft - horizTol && footX <= platRight + horizTol) {
+          this.y = platTop;
           this.vy = 0;
           this.onGround = true;
           this.currentPlatform = plat;
           this.jumpsRemaining = 2;
           groundedThisFrame = true;
-
-          // Land squish
-          if (!prevOnGround) {
-            this.scaleX = 1.35;
-            this.scaleY = 0.65;
-            window.soundEngine.playHit(false);
-            window.particles.spawnDust(this.x, this.y, 5, 0);
-          }
           break;
         }
-      } else {
-        // Solid Platform: Check top, sides, bottom
-        const left = plat.x;
-        const right = plat.x + plat.w;
-        const top = plat.y;
-        const bottom = plat.y + plat.h;
+      }
 
-        // Feet on top (connected platforms meet the slope bridges flush at exact edge)
-        const isBridgeConnected = (plat.id === 'main' || plat.id === 'low_left' || plat.id === 'low_right');
-        const tol = isBridgeConnected ? 0 : 10;
+      // 2. Landing from above (falling downwards: vy >= 0)
+      if (this.vy >= 0 && footX >= platLeft - horizTol && footX <= platRight + horizTol) {
+        // Continuous swept check + landing threshold
+        const crossedTop = (prevY <= platTop + 4 && footY >= platTop - 4);
+        const withinLandingWindow = (footY >= platTop - 4 && footY <= platTop + Math.max(26, Math.abs(this.vy * dt) + 10));
 
-        if (this.vy >= 0 &&
-            footX >= left - tol &&
-            footX <= right + tol &&
-            footY >= top - 2 &&
-            footY <= top + 22) {
-          this.y = top;
+        if (crossedTop || withinLandingWindow) {
+          this.y = platTop;
           this.vy = 0;
           this.onGround = true;
           this.currentPlatform = plat;
@@ -595,32 +585,35 @@ class Fighter {
           }
           break;
         }
+      }
 
-        // Head hit ceiling
+      // 3. For solid platforms: Ceiling and wall collisions
+      if (plat.type === 'solid') {
+        // Head hit ceiling (jumping up from below: vy < 0)
         const headY = this.y - this.radius * 2;
         if (this.vy < 0 &&
-            footX >= left &&
-            footX <= right &&
-            headY <= bottom &&
-            headY >= bottom - 18) {
-          this.y = bottom + this.radius * 2;
+            footX >= platLeft &&
+            footX <= platRight &&
+            headY <= platBottom &&
+            headY >= platBottom - 18) {
+          this.y = platBottom + this.radius * 2;
           this.vy = 50; // bump down
           this.scaleX = 1.25;
           this.scaleY = 0.75;
-          window.particles.spawnDust(this.x, bottom, 4, 0);
+          window.particles.spawnDust(this.x, platBottom, 4, 0);
         }
 
         // Side walls collision
         const bodyCenterY = this.y - this.radius;
-        if (bodyCenterY >= top + 12 && bodyCenterY < bottom) {
+        if (bodyCenterY >= platTop + 12 && bodyCenterY < platBottom) {
           const hasLeftBridge = (plat.id === 'main' || plat.id === 'low_right');
           const hasRightBridge = (plat.id === 'main' || plat.id === 'low_left');
 
-          if (!hasLeftBridge && this.vx > 0 && this.x + this.radius >= left && this.x < left + 15) {
-            this.x = left - this.radius;
+          if (!hasLeftBridge && this.vx > 0 && this.x + this.radius >= platLeft && this.x < platLeft + 15) {
+            this.x = platLeft - this.radius;
             this.vx = 0;
-          } else if (!hasRightBridge && this.vx < 0 && this.x - this.radius <= right && this.x > right - 15) {
-            this.x = right + this.radius;
+          } else if (!hasRightBridge && this.vx < 0 && this.x - this.radius <= platRight && this.x > platRight - 15) {
+            this.x = platRight + this.radius;
             this.vx = 0;
           }
         }
@@ -628,7 +621,7 @@ class Fighter {
     }
 
     if (!groundedThisFrame && this.onGround) {
-      // Walked off edge
+      // Physically walked off platform edge -> falls naturally
       this.onGround = false;
       this.currentPlatform = null;
       if (this.jumpsRemaining === 2) {

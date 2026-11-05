@@ -117,14 +117,14 @@ class Arena {
     ];
 
     // Jump / Spring Pads:
-    // - Two side jump pads on the stationary lower blue platforms (mid_left & mid_right)
-    // - Side recovery spring pads on low islands
-    // - Middle platform jump pad completely removed
+    // - Two jump pads at the left and right beginnings of the central main platform (where the bridges connect)
+    // - Two side recovery spring pads on low islands
+    // - Isolated upper blue platform jump pads removed
     this.springPads = [
-      // Left Lower Blue Platform Jump Pad (mid_left inner side, stationary)
-      { id: 'spring_mid_left', platId: 'mid_left', relX: 0.75, w: 50, h: 14, bounceVy: -920, animTime: 0, x: 357.5, y: 588 },
-      // Right Lower Blue Platform Jump Pad (mid_right inner side, stationary)
-      { id: 'spring_mid_right', platId: 'mid_right', relX: 0.25, w: 50, h: 14, bounceVy: -920, animTime: 0, x: 1392.5, y: 588 },
+      // Left Central Bridge Jump Pad (high power launch to topmost platform level)
+      { id: 'spring_main_left', platId: 'main', relX: 0.012, w: 48, h: 14, bounceVy: -1180, animTime: 0, x: 557.8, y: 708 },
+      // Right Central Bridge Jump Pad (high power launch to topmost platform level)
+      { id: 'spring_main_right', platId: 'main', relX: 0.988, w: 48, h: 14, bounceVy: -1180, animTime: 0, x: 1194.2, y: 708 },
       // Left Recovery Jump Pad
       { id: 'spring_left', platId: 'low_left', relX: 0.35, w: 50, h: 14, bounceVy: -1050, animTime: 0, x: 180, y: 808 },
       // Right Recovery Jump Pad
@@ -419,15 +419,17 @@ class Arena {
     }
   }
 
-  // Check spring pad bounce for character (Exact same mechanics)
+  // Check spring pad bounce for character (Reliable bounce mechanics)
   checkSpringPad(fighter) {
     if (fighter.vy < 0) return false; // Only bounce when falling or on ground
 
     for (const pad of this.springPads) {
+      // Main platform pads have clean bounds so bridge traversal is never accidentally triggered
+      const padMargin = pad.id && pad.id.includes('main') ? 5 : 14;
       if (
-        fighter.x > pad.x - 15 &&
-        fighter.x < pad.x + pad.w + 15 &&
-        fighter.y >= pad.y - 12 &&
+        fighter.x >= pad.x - padMargin &&
+        fighter.x <= pad.x + pad.w + padMargin &&
+        fighter.y >= pad.y - 14 &&
         fighter.y <= pad.y + pad.h + 8
       ) {
         fighter.y = pad.y;
